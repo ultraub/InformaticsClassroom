@@ -197,17 +197,19 @@ def exercise_review(exercise):
         enable_cross_partition_query=True )) 
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
-    assignment=items[0]['questions']
+    
     # Step 3 get all the attempts made for that exercise
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
     tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
     df=pd.DataFrame(tasks)
     # Step 4 construct dataframe to send to html page
-    df1=df.groupby(['team','question']).agg({'correct':'max'}).reset_index()
-    df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
-    df2['score']=df2.iloc[:,1:].sum(axis=1)
-    df1=df.groupby(['team','question'])['answer'].count().reset_index()
-    df3=df1.pivot_table(index='team',columns='question')
+    if not df.empty:
+        df1=df.groupby(['team','question']).agg({'correct':'max'}).reset_index()
+        df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
+        df2['score']=df2.iloc[:,1:].sum(axis=1)
+        df1=df.groupby(['team','question'])['answer'].count().reset_index()
+        df3=df1.pivot_table(index='team',columns='question')
+
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False),df3.to_html(classes='data',index=False)], exercise=exercise)
 
 
@@ -254,13 +256,18 @@ def exercise_review_open(exercise,questionnum):
         enable_cross_partition_query=True )) 
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
-    assignment=items[0]['questions']
+
     # Step 3 get all the attempts made for that exercise
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
     tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
     df=pd.DataFrame(tasks)
     # Step 4 construct dataframe to send to html page
-    df2=df[df.question==questionnum]
+    # rbb handle empty dataframes
+    if not df.empty:
+        df2=df[df.question==questionnum]
+    else:
+        df2=df
+
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
 
 
