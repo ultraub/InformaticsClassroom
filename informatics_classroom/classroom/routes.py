@@ -96,8 +96,7 @@ def assignment(exercise):
     """Assignment home"""
     # for testing 
     if TESTING_MODE:
-        session['user'] = 'user_testing'
-        user_name = session['user']
+        session['user'] = {'preferred_username' : 'user_test'}
     else:
         if not session.get("user"):
             #Test if user session is set
@@ -111,9 +110,11 @@ def assignment(exercise):
             if 'return_to' in session.keys():
                 exercise=session['exercise']
 
-        user_name=session['user'].get('preferred_username').split('@')[0]
+    user_name=session['user'].get('preferred_username').split('@')[0]
+
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
+    # rbb double check that this doesn't open to sql injection
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
         query=query,
@@ -127,13 +128,21 @@ def assignment(exercise):
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
     tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'") 
     df=pd.DataFrame(tasks)
-    df=df[df['PartitionKey']=="{}".format(exercise.lower())]
+
+    # rbb we'll check to see if something is returned at all, and if it is, flag
+    # where it has been attempted 
+    attempted = True
+    if not df.empty:
+        df=df[df['PartitionKey']=="{}".format(exercise.lower())]        
+    if df.empty:
+        attempted = False
 
     qnum,anum=0,0
+    # rbb i think this should just be changed to enumerate? prevent missing indices
     for i in range(0,len(assignment)):
         q_num=assignment[i]['question_num']
-        attempts=len(df[df.question==str(q_num)])
-        correct=len(df[(df.question==str(q_num))&(df.correct==1)])>0
+        attempts=len(df[df.question==str(q_num)]) if attempted else 0
+        correct=len(df[(df.question==str(q_num))&(df.correct==1)])>0 if attempted else 0
         assignment[i]['attempts']=attempts
         assignment[i]['correct']=correct
         qnum+=1
@@ -149,8 +158,7 @@ def assignment(exercise):
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
     if TESTING_MODE:
-        session['user'] = 'user_testing'
-        user_name = session['user']
+        session['user'] = {'preferred_username' : 'user_test'}
     else:
         if not session.get("user"):
             #Test if user session is set
@@ -158,8 +166,9 @@ def exercise_review(exercise):
         if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
             #Test if authenticated user is coming from an authorized domain
             return redirect(url_for("auth_bp.login"))
-        #Test if user is an authorized user
-        user_name=session['user'].get('preferred_username').split('@')[0]
+    
+    #Test if user is an authorized user
+    user_name=session['user'].get('preferred_username').split('@')[0]
 
     course_name=str(exercise).split('_')[0]   
 
@@ -206,8 +215,8 @@ def exercise_review(exercise):
 def exercise_review_open(exercise,questionnum):
     """Exercise Review shows all the students and their progress on an Exercise"""
     if TESTING_MODE:
-        session['user'] = 'user_testing'
-        user_name = session['user']
+        session['user'] = {'preferred_username' : 'user_test'}
+
     else:
         if not session.get("user"):
             #Test if user session is set
@@ -215,8 +224,9 @@ def exercise_review_open(exercise,questionnum):
         if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
             #Test if authenticated user is coming from an authorized domain
             return redirect(url_for("auth_bp.login"))
-        #Test if user is an authorized user
-        user_name=session['user'].get('preferred_username').split('@')[0]
+    
+    #Test if user is an authorized user
+    user_name=session['user'].get('preferred_username').split('@')[0]
 
     course_name=str(exercise).split('_')[0]   
     authorized_user=False   
@@ -259,8 +269,7 @@ def exercise_form(exercise):
     """Exercise Form"""
     #Step 1 get user information
     if TESTING_MODE:
-        session['user'] = 'user_testing'
-        user_name = session['user']
+        session['user'] = {'preferred_username' : 'user_test'}
     else:
         if not session.get("user"):
             #Test if user session is set
@@ -269,7 +278,8 @@ def exercise_form(exercise):
             #Test if authenticated user is coming from an authorized domain
             return redirect(url_for("auth_bp.login"))
         #Test if user is an authorized user
-        user_name=session['user'].get('preferred_username').split('@')[0]
+    
+    user_name=session['user'].get('preferred_username').split('@')[0]
         
     course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
@@ -298,8 +308,7 @@ def exercise_form(exercise):
 def student_center():
     items=[]
     if TESTING_MODE:
-        session['user'] = 'user_testing'
-        user_name = session['user']
+        session['user'] = {'preferred_username' : 'user_test'}
     else:
         if not session.get("user"):
             #Test if user session is set
@@ -307,8 +316,9 @@ def student_center():
         if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
             #Test if authenticated user is coming from an authorized domain
             return redirect(url_for("auth_bp.login"))
-        #Test if user is an authorized user
-        user_name=session['user'].get('preferred_username').split('@')[0]
+    
+    #Test if user is an authorized user
+    user_name=session['user'].get('preferred_username').split('@')[0]
 
     if request.method=='POST':
         #Get course name
