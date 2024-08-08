@@ -7,20 +7,27 @@ from azure.cosmosdb.table.tableservice import TableService
 from informatics_classroom.azure_func import init_cosmos,load_answerkey
 from informatics_classroom.classroom import classroom_bp
 from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
-from informatics_classroom.config import Keys
+from informatics_classroom.config import Keys, Config
+import informatics_classroom.classroom.helpers as ich
+
+# rbb setting for testing without authentication
+TESTING_MODE = Config.TESTING
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
 answerkey=load_answerkey('quiz','bids-class')
 
+# rbb good
 @classroom_bp.route('/home')
 def landingpage():
     return render_template('home.html',title='Home')
 
+# rbb needs to default to something
 @classroom_bp.route("/quiz",methods=['GET','POST'])
 def quiz():
     return render_template('quiz.html')
 
+# rbb shouldn't this just be post? needs to check user
 @classroom_bp.route("/submit-answer",methods=['GET','POST'])
 def submit_answer():
     if request.method=='GET':
@@ -83,21 +90,28 @@ def submit_answer():
     return jsonify({"Something went wrong"}),400
 
 
+
 @classroom_bp.route("/assignment/<exercise>")
 def assignment(exercise):
     """Assignment home"""
-    if not session.get("user"):
-        #Test if user session is set
-        session["return_to"]="classroom_bp.assignment"
-        session['exercise']=exercise
-        return redirect(url_for("auth_bp.login" ))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    if len(exercise)==0:
-        if 'return_to' in session.keys():
-            exercise=session['exercise']
-    user_name=session['user'].get('preferred_username').split('@')[0]
+    # for testing 
+    if TESTING_MODE:
+        session['user'] = 'user_testing'
+        user_name = session['user']
+    else:
+        if not session.get("user"):
+            #Test if user session is set
+            session["return_to"]="classroom_bp.assignment"
+            session['exercise']=exercise
+            return redirect(url_for("auth_bp.login" ))
+        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #Test if authenticated user is coming from an authorized domain
+            return redirect(url_for("auth_bp.login"))
+        if len(exercise)==0:
+            if 'return_to' in session.keys():
+                exercise=session['exercise']
+
+        user_name=session['user'].get('preferred_username').split('@')[0]
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
@@ -106,12 +120,15 @@ def assignment(exercise):
         enable_cross_partition_query=True )) 
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
+    
     assignment=items[0]['questions']
+
     #Query Tableservice to get all attempts to answer questions for this assignment
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
     tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'") 
     df=pd.DataFrame(tasks)
     df=df[df['PartitionKey']=="{}".format(exercise.lower())]
+
     qnum,anum=0,0
     for i in range(0,len(assignment)):
         q_num=assignment[i]['question_num']
@@ -131,25 +148,37 @@ def assignment(exercise):
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    if not session.get("user"):
-        #Test if user session is set
-        return redirect(url_for("auth_bp.login"))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    #Test if user is an authorized user
-    user_name=session['user'].get('preferred_username').split('@')[0]
+    if TESTING_MODE:
+        session['user'] = 'user_testing'
+        user_name = session['user']
+    else:
+        if not session.get("user"):
+            #Test if user session is set
+            return redirect(url_for("auth_bp.login"))
+        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #Test if authenticated user is coming from an authorized domain
+            return redirect(url_for("auth_bp.login"))
+        #Test if user is an authorized user
+        user_name=session['user'].get('preferred_username').split('@')[0]
+
     course_name=str(exercise).split('_')[0]   
+
     authorized_user=False
-    container=init_cosmos('quiz','bids-class')
-    items=container.read_item(item="auth_users",partition_key="auth")
-    for name in items['users']:
-        if user_name in name:
-        # Test if user is in list of authorized users
-            if course_name in name[user_name]:
-                authorized_user=True
-    if not authorized_user:
-        return redirect(url_for("auth_bp.login"))      
+
+    # Authorized user checks
+    if TESTING_MODE:
+            authorized_user = True
+    else:
+        container=init_cosmos('quiz','bids-class')
+        items=container.read_item(item="auth_users",partition_key="auth")
+        for name in items['users']:
+            if user_name in name:
+            # Test if user is in list of authorized users
+                if course_name in name[user_name]:
+                    authorized_user=True
+        if not authorized_user:
+            return redirect(url_for("auth_bp.login")) 
+     
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
@@ -176,30 +205,39 @@ def exercise_review(exercise):
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")
 def exercise_review_open(exercise,questionnum):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    if not session.get("user"):
-        #Test if user session is set
-        return redirect(url_for("auth_bp.login"))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    
-    #Test if user is an authorized user
-    user_name=session['user'].get('preferred_username').split('@')[0]
-    course_name=str(exercise).split('_')[0]   
-    authorized_user=False
-    container=init_cosmos('quiz','bids-class')
-    items=container.read_item(item="auth_users",partition_key="auth")
-    for name in items['users']:
-        if user_name in name:
-        # Test if user is in list of authorized users
-            if course_name in name[user_name]:
-                authorized_user=True
-    if not authorized_user:
-        return redirect(url_for("auth_bp.login"))      
+    if TESTING_MODE:
+        session['user'] = 'user_testing'
+        user_name = session['user']
+    else:
+        if not session.get("user"):
+            #Test if user session is set
+            return redirect(url_for("auth_bp.login"))
+        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #Test if authenticated user is coming from an authorized domain
+            return redirect(url_for("auth_bp.login"))
+        #Test if user is an authorized user
+        user_name=session['user'].get('preferred_username').split('@')[0]
 
+    course_name=str(exercise).split('_')[0]   
+    authorized_user=False   
+
+    # User Auth Checks
+    if TESTING_MODE:
+            authorized_user = True
+    else:
+        container=init_cosmos('quiz','bids-class')
+        items=container.read_item(item="auth_users",partition_key="auth")
+        for name in items['users']:
+            if user_name in name:
+            # Test if user is in list of authorized users
+                if course_name in name[user_name]:
+                    authorized_user=True
+        if not authorized_user:
+            return redirect(url_for("auth_bp.login")) 
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
+    # TODO *RBB 7/26 - Parameterize Queries 
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
         query=query,
@@ -220,13 +258,19 @@ def exercise_review_open(exercise,questionnum):
 def exercise_form(exercise):
     """Exercise Form"""
     #Step 1 get user information
-    if not session.get("user"):
-        #Test if user session is set
-        return redirect(url_for("auth_bp.login"))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    user_name=session['user'].get('preferred_username').split('@')[0]
+    if TESTING_MODE:
+        session['user'] = 'user_testing'
+        user_name = session['user']
+    else:
+        if not session.get("user"):
+            #Test if user session is set
+            return redirect(url_for("auth_bp.login"))
+        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #Test if authenticated user is coming from an authorized domain
+            return redirect(url_for("auth_bp.login"))
+        #Test if user is an authorized user
+        user_name=session['user'].get('preferred_username').split('@')[0]
+        
     course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
@@ -253,8 +297,19 @@ def exercise_form(exercise):
 @classroom_bp.route("/studentcenter",methods=['GET','POST'])
 def student_center():
     items=[]
-    if not session.get("user"):
-        return redirect(url_for("auth_bp.login"))
+    if TESTING_MODE:
+        session['user'] = 'user_testing'
+        user_name = session['user']
+    else:
+        if not session.get("user"):
+            #Test if user session is set
+            return redirect(url_for("auth_bp.login"))
+        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #Test if authenticated user is coming from an authorized domain
+            return redirect(url_for("auth_bp.login"))
+        #Test if user is an authorized user
+        user_name=session['user'].get('preferred_username').split('@')[0]
+
     if request.method=='POST':
         #Get course name
         class_name=request.form['wg1']
