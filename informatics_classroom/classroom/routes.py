@@ -33,6 +33,7 @@ def submit_answer():
     if request.method=='GET':
         form=AnswerForm()
         return render_template('answerform.html',title='AnswerForm',form=form)
+    
     sub_fields=['module', 'team', 'question_num', 'answer_num']
     for field in sub_fields:
         if field not in request.form.keys():
@@ -95,15 +96,24 @@ def submit_answer():
 def assignment(exercise):
     """Assignment home"""
     # for testing 
-    session, user_name = ich.check_user_session(session)
+    user_name = ich.check_user_session(session)
 
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
-    # rbb double check that this doesn't open to sql injection
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    query = "SELECT * FROM c where c.id=@id"
+    # rbb 08/13 - update to parameterized queries
+    parameters = [
+        {
+            "name" : "@id",
+            "value" : format(exercise.lower())
+        },
+    ]
+
     items = list(container.query_items(
         query=query,
-        enable_cross_partition_query=True )) 
+        parameters=parameters,
+        enable_cross_partition_query=True ))
+     
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
     
@@ -142,7 +152,7 @@ def assignment(exercise):
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    session, user_name = ich.check_user_session(session)
+    user_name = ich.check_user_session(session)
 
     course_name=str(exercise).split('_')[0]   
 
@@ -152,9 +162,19 @@ def exercise_review(exercise):
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    query = "SELECT * FROM c where c.id=@id"
+
+    # rbb 08/13 - update to parameterized queries
+    parameters = [
+        {
+            "name" : "@id",
+            "value" : format(exercise.lower())
+        },
+    ]
+
     items = list(container.query_items(
         query=query,
+        parameters=parameters,
         enable_cross_partition_query=True )) 
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
@@ -171,13 +191,18 @@ def exercise_review(exercise):
         df1=df.groupby(['team','question'])['answer'].count().reset_index()
         df3=df1.pivot_table(index='team',columns='question')
 
+    # rbb set dummy holders
+    else:
+        df2 = df
+        df3 = df
+
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False),df3.to_html(classes='data',index=False)], exercise=exercise)
 
 
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")
 def exercise_review_open(exercise,questionnum):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    session, user_name = ich.check_user_session(session)
+    user_name = ich.check_user_session(session)
 
     course_name=str(exercise).split('_')[0]   
     # User Auth Checks
@@ -187,11 +212,20 @@ def exercise_review_open(exercise,questionnum):
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
-    # TODO *RBB 7/26 - Parameterize Queries 
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    query = "SELECT * FROM c where c.id=@id"
+    # rbb 08/13 - update to parameterized queries
+    parameters = [
+        {
+            "name" : "@id",
+            "value" : format(exercise.lower())
+        },
+    ]
+
     items = list(container.query_items(
         query=query,
+        parameters=parameters,
         enable_cross_partition_query=True )) 
+    
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
 
@@ -202,7 +236,10 @@ def exercise_review_open(exercise,questionnum):
     # Step 4 construct dataframe to send to html page
     # rbb handle empty dataframes
 
-    df2 = df[df.question==questionnum] if not df.empty else df2 = df
+    if not df.empty:
+        df2 = df[df.question==questionnum]
+    else:
+        df2 = df
 
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
 
@@ -211,16 +248,26 @@ def exercise_review_open(exercise,questionnum):
 def exercise_form(exercise):
     """Exercise Form"""
     #Step 1 get user information
-    session, user_name = ich.check_user_session(session)
+    user_name = ich.check_user_session(session)
         
     course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    query = "SELECT * FROM c where c.id=@id"
+    # rbb 08/13 - update to parameterized queries
+    parameters = [
+        {
+            "name" : "@id",
+            "value" : format(exercise.lower())
+        },
+    ]
+
     items = list(container.query_items(
         query=query,
+        parameters=parameters,
         enable_cross_partition_query=True )) 
+    
     if len(items)==0:
         return "No assignment found with the name of {}".format(exercise)
     qnum=len(items[0]['questions'])
@@ -240,7 +287,7 @@ def exercise_form(exercise):
 def student_center():
     items=[]
 
-    session, user_name = ich.check_user_session(session)
+    user_name = ich.check_user_session(session)
     
     #Test if user is an authorized user
     user_name=session['user'].get('preferred_username').split('@')[0]

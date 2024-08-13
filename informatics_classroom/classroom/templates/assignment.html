@@ -2,12 +2,18 @@
 {% block title %}Home Page{% endblock %}
 {% block content %}
 <body>
-    <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
-    <h2>Assignment Page for Exercise {{ exercise }}</h2>
-    {% for table in tables %}
-        {{ table|safe }}
-    {% endfor %}
-    <h2> You have correctly answered {{anum}} out of {{qnum}}</h2>
+    <div class="col-12 justify-content-center">
+        <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
+        <h2>Assignment Page for Exercise {{ exercise }}</h2>
+            <div class="col-12 d-flex justify-content-center align-items-center">
+            {% for table in tables %}
+                <div class="col-12 justify-content-center">
+                {{ table|safe }}
+                </div>
+            {% endfor %}
+            </div>
+        <h2> You have correctly answered {{anum}} out of {{qnum}}</h2>
 
+    </div>
 </body>
 {% endblock content %}

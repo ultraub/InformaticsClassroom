@@ -5,20 +5,26 @@ from informatics_classroom.azure_func import init_cosmos,load_answerkey
 
 def check_user_session(session):
     if Config.TESTING:
-        session['user'] = 'user_testing'
+        session['user'] = {'preferred_username' : 'user_test'}	
         user_name = session['user']
     else:
-        if not session.get("user"):
-            #Test if user session is set
+        print(session)
+        try:
+            if not session.get("user"):
+                #Test if user session is set
+                return redirect(url_for("auth_bp.login"))
+            if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+                #Test if authenticated user is coming from an authorized domain
+                return redirect(url_for("auth_bp.login"))
+        except:
+            session.clear()
             return redirect(url_for("auth_bp.login"))
-        if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-            #Test if authenticated user is coming from an authorized domain
-            return redirect(url_for("auth_bp.login"))
+
         #Test if user is an authorized user
 
     user_name=session['user'].get('preferred_username').split('@')[0]
 
-    return session, user_name
+    return user_name
 
 def check_authorized_user(session, course_name):
     authorized_user=False   
