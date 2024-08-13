@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link href="/static/style.css" rel="stylesheet">
-</head>
+{% extends "base.html" %}
+{% block title %}Biomedical Informatics Student Center{% endblock %}
+{% block content %}
 <body>
     <h1>Biomedical Informatics Student Center</h1>
     <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
@@ -51,5 +48,4 @@
 </div>
 {% endif %}
 </body>
-
-</html>
+{% endblock content %}

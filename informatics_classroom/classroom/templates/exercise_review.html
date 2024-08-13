@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link href="/static/style.css" rel="stylesheet">
-</head>
+{% extends "base.html" %}
+{% block title %}Home Page{% endblock %}
+{% block content %}
 <body>
     <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
     <h2>Assignment Page for Exercise {{ exercise }}</h2>
@@ -12,3 +9,4 @@
     {% endfor %}
 
 </body>
+{% endblock content %}
