@@ -92,30 +92,56 @@ def submit_answer():
 
 
 
-@classroom_bp.route("/assignment/<exercise>")
-def assignment(exercise):
+@classroom_bp.route("/assignment/<class_val>/<module>")
+def assignment(class_val, module):
     """Assignment home"""
     # for testing 
     user_name = ich.check_user_session(session)
 
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id=@id"
-    # rbb 08/13 - update to parameterized queries
+
+    #ignore this for now, will use later
+    query = """
+        SELECT
+        c.question_num,
+        c.correct_answer
+        FROM quiz q
+        join c in q.questions
+        where q.id = @class_val
+    """
+
+    query = """
+SELECT
+*
+FROM c 
+where c.class = @class_val
+and c.module = @module
+    """
+
+    print(class_val)
+    print(module)
     parameters = [
         {
-            "name" : "@id",
-            "value" : format(exercise.lower())
+            "name" : "@class_val",
+            "value" : class_val.lower()
+        },
+        {
+            "name" : "@module",
+            "value" : int(module)
         },
     ]
-
+ 
     items = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True ))
-     
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True
+        )
+    )
+    print(items)
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
+        return f"No assignment found for class {class_val} and module {module}"
+    #{}".format(exercise)
     
     assignment=items[0]['questions']
 
@@ -128,7 +154,7 @@ def assignment(exercise):
     # where it has been attempted 
     attempted = True
     if not df.empty:
-        df=df[df['PartitionKey']=="{}".format(exercise.lower())]        
+        df=df[df['PartitionKey']=="{}".format(class_val.lower())]        
     if df.empty:
         attempted = False
 
@@ -147,7 +173,7 @@ def assignment(exercise):
     df1.drop('correct_answer',axis=1, inplace=True)
     df1.sort_values('question_num',inplace=True)
     df1.reset_index(drop=True,inplace=True)
-    return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], exercise=exercise,qnum=qnum,anum=anum)
+    return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
 
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
@@ -162,6 +188,7 @@ def exercise_review(exercise):
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz','bids-class')
     #Query quizes in cosmosdb to get the structure for this assignment
+    # TODO rbb need to update to wrap queries in something where redirects on bad query
     query = "SELECT * FROM c where c.id=@id"
 
     # rbb 08/13 - update to parameterized queries

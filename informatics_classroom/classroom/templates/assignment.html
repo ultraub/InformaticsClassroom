@@ -4,7 +4,7 @@
 <body>
     <div class="col-12 justify-content-center">
         <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
-        <h2>Assignment Page for Exercise {{ exercise }}</h2>
+        <h2>Assignment Page for {{ class_val }} Module {{ module }}</h2>
             <div class="col-12 d-flex justify-content-center align-items-center">
             {% for table in tables %}
                 <div class="col-12 justify-content-center">
