@@ -9,6 +9,7 @@ from informatics_classroom.classroom import classroom_bp
 from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
 import informatics_classroom.classroom.helpers as ich
+from markupsafe import escape
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
@@ -28,8 +29,12 @@ def quiz():
     return render_template('quiz.html')
 
 # rbb shouldn't this just be post? needs to check user
-@classroom_bp.route("/submit-answer",methods=['GET','POST'])
+@classroom_bp.route("/submit-answer",methods=['POST'])
 def submit_answer():
+
+    user_name = ich.check_user_session(session)
+
+    # rbb 8/18 i think this needs to be a different route, this should always be post
     if request.method=='GET':
         form=AnswerForm()
         return render_template('answerform.html',title='AnswerForm',form=form)
@@ -67,6 +72,7 @@ def submit_answer():
             'RowKey':RowKey,
             'course':partition_key,
             'module': module_name,
+            # rbb 8/18 should this be user name?
             'team': request.form['team'],
             'question': question_num,
             'answer':str(answer_num)
@@ -102,6 +108,9 @@ def assignment(class_val, module):
     #Query quizes in cosmosdb to get the structure for this assignment
 
     #ignore this for now, will use later
+    class_val = escape(class_val)
+    module = escape(module)
+
     query = """
         SELECT
         c.question_num,
@@ -112,11 +121,11 @@ def assignment(class_val, module):
     """
 
     query = """
-SELECT
-*
-FROM c 
-where c.class = @class_val
-and c.module = @module
+        SELECT
+        *
+        FROM c 
+        where c.class = @class_val
+        and c.module = @module
     """
 
     print(class_val)
@@ -173,9 +182,11 @@ and c.module = @module
     df1.drop('correct_answer',axis=1, inplace=True)
     df1.sort_values('question_num',inplace=True)
     df1.reset_index(drop=True,inplace=True)
+
+    # rbb 8/18 do we need to close the connection?
     return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
 
-@classroom_bp.route("/exercise_review/<exercise>")
+@classroom_bp.route("/exercise_review/<class_val>/<module>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
     user_name = ich.check_user_session(session)
@@ -343,5 +354,67 @@ def student_center():
                     items[i]['questions'][j]['correct']=True       
     return render_template("studentcenter.html",title='Student Center',form=ClassForm(),user=session["user"],items=items)
 
-   
+
+# rbb 8/19 may want to add an API key to override general workflow managed by session variables
+@classroom_bp.route("/add_user/<userId>",methods=['GET'])
+def add_user(userId):
+
+    user_name = ich.check_user_session(session)
+
+    if ich.check_permissions(user_name, 'create_user'):
+        container=init_cosmos('users','bids-class')
+        container.upsert_item({
+            'id' : userId,
+            'userId' : userId,
+            'name' : 'test user2',
+            'role' : 'user',
+            'class_access' : [
+                'pmap',
+            ],
+        })
+    
+    # this should probably just be called as a post. return success or failure as status
+    else:
+        return 0
+
+# rbb 8/18 need a route to authorize a user for a class, or module and deny
+@classroom_bp.route("/authorize_user/<user_id>/<class_val>",methods=['GET'])
+def authorize_user(user_id, class_val):
+
+    user_name = ich.check_user_session(session)
+
+    # needs to appropriate handle status codes and check for errors
+    if ich.check_permissions(user_name, 'authorize_user'):
+        container=init_cosmos('users','bids-class')
+        user = container.read_item(item=user_id, partition_key=user_id)
+        user['class_access'].append(class_val)
+        container.replace_item(item=user, body=user)
+
+        return 200
+    
+    else:
+        return 301
+
+def deny_user(user, class_val, module):
+
+    user_name = ich.check_user_session(session)
+
+    if ich.check_permissions(user_name, 'deny_user'):
+        container=init_cosmos('users','bids-class')
+        user = container.read_item(item=user_id, partition_key=user_id)
+        user['class_access'].remove(class_val)
+        container.replace_item(item=user, body=user)
+    return 0
+
+# rbb 8/18 need a route to update questions
+def update_question():
+
+    return 0
+
+# rbb 8/18 need a route to add quizzes
+def add_quiz():
+    return 0
+
+
+
 
