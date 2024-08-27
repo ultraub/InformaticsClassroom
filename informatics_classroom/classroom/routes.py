@@ -42,7 +42,7 @@ def submit_answer():
     sub_fields=['module', 'team', 'question_num', 'answer_num']
     for field in sub_fields:
         if field not in request.form.keys():
-            return jsonify({"message":"Bad request, missing field {}".format(field)}),400
+            return jsonify({"message":f"Bad request, missing field {field}"}),400
     # Get the answer key
     if 'class' in request.form.keys():
         #removing use of class as a variable name
@@ -163,7 +163,7 @@ def assignment(class_val, module):
     # where it has been attempted 
     attempted = True
     if not df.empty:
-        df=df[df['PartitionKey']=="{}".format(class_val.lower())]        
+        df=df[df['PartitionKey']==f"{class_val.lower()}"]        
     if df.empty:
         attempted = False
 
@@ -206,7 +206,7 @@ def exercise_review(exercise):
     parameters = [
         {
             "name" : "@id",
-            "value" : format(exercise.lower())
+            "value" : exercise.lower()
         },
     ]
 
@@ -215,7 +215,7 @@ def exercise_review(exercise):
         parameters=parameters,
         enable_cross_partition_query=True )) 
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
+        return f"No assignment found with the name of {exercise}"
     
     # Step 3 get all the attempts made for that exercise
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
@@ -255,7 +255,7 @@ def exercise_review_open(exercise,questionnum):
     parameters = [
         {
             "name" : "@id",
-            "value" : format(exercise.lower())
+            "value" : exercise.lower()
         },
     ]
 
@@ -265,7 +265,7 @@ def exercise_review_open(exercise,questionnum):
         enable_cross_partition_query=True )) 
     
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
+        return f"No assignment found with the name of {exercise}"
 
     # Step 3 get all the attempts made for that exercise
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
@@ -297,7 +297,7 @@ def exercise_form(exercise):
     parameters = [
         {
             "name" : "@id",
-            "value" : format(exercise.lower())
+            "value" : exercise.lower()
         },
     ]
 
@@ -307,7 +307,7 @@ def exercise_form(exercise):
         enable_cross_partition_query=True )) 
     
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
+        return f"No assignment found with the name of {exercise}"
     qnum=len(items[0]['questions'])
     #step 3 create form for that exercise
     class A(FlaskForm):
@@ -335,7 +335,7 @@ def student_center():
         class_name=request.form['wg1']
         #Get quiz format from Cosmos
         container=init_cosmos('quiz','bids-class')
-        query = "SELECT * FROM c where c.class='{}' ORDER BY c.module".format(class_name.lower())
+        query = f"SELECT * FROM c where c.class='{class_name.lower()}' ORDER BY c.module"
         items = list(container.query_items(
             query=query,
             enable_cross_partition_query=True )) 
@@ -401,7 +401,7 @@ def deny_user(user, class_val, module):
 
     if ich.check_permissions(user_name, 'deny_user'):
         container=init_cosmos('users','bids-class')
-        user = container.read_item(item=user_id, partition_key=user_id)
+        user = container.read_item(item=user_name, partition_key=user_name)
         user['class_access'].remove(class_val)
         container.replace_item(item=user, body=user)
     return 0
@@ -409,7 +409,19 @@ def deny_user(user, class_val, module):
 # rbb 8/18 need a route to update questions
 def update_question():
 
-    return 0
+    user_name = ich.check_user_session(session)
+
+    # needs to appropriate handle status codes and check for errors
+    if ich.check_permissions(user_name, 'update_question'):
+        container=init_cosmos('quiz','bids-class')
+        question = container.read_item(item=user_id, partition_key=user_id)
+        user['class_access'].append(class_val)
+        container.replace_item(item=user, body=user)
+
+        return 200
+    
+    else:
+        return 301
 
 # rbb 8/18 need a route to add quizzes
 def add_quiz():
