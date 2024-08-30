@@ -33,7 +33,7 @@ def check_authorized_user(session, course_name):
     else:
         user_name=session['user'].get('preferred_username').split('@')[0]
 
-        container=init_cosmos('quiz','bids-class')
+        container=init_cosmos('quiz',Config.DATABASE)
         items=container.read_item(item="auth_users",partition_key="auth")
 
         for name in items['users']:
@@ -43,3 +43,13 @@ def check_authorized_user(session, course_name):
                     authorized_user=True
     
     return authorized_user
+
+# rbb 8/18 route to check if a user is allowed certain permissions based on their role
+def check_permissions(user_id, action):
+
+    container=init_cosmos('users',Config.DATABASE)
+    user = container.read_item(item=user_id, partition_key=user_id)
+    if action in user['permissions']:
+        return 1
+    
+    return 0

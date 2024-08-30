@@ -10,13 +10,15 @@ from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
 import informatics_classroom.classroom.helpers as ich
 from markupsafe import escape
+import json
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
+DATABASE = Config.DATABASE
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
-answerkey=load_answerkey('quiz','bids-class')
+answerkey=load_answerkey('quiz',Config.DATABASE)
 
 # rbb good
 @classroom_bp.route('/home')
@@ -29,7 +31,7 @@ def quiz():
     return render_template('quiz.html')
 
 # rbb shouldn't this just be post? needs to check user
-@classroom_bp.route("/submit-answer",methods=['POST'])
+@classroom_bp.route("/submit-answer",methods=['GET','POST'])
 def submit_answer():
 
     user_name = ich.check_user_session(session)
@@ -54,7 +56,7 @@ def submit_answer():
     
     
 
-    #container=init_cosmos('quiz','bids-class')
+    #container=init_cosmos('quiz',DATABASE)
     #output=container.read_item(item=item_name,partition_key=partition_key)
     #questions=output['questions']
   
@@ -104,7 +106,7 @@ def assignment(class_val, module):
     # for testing 
     user_name = ich.check_user_session(session)
 
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
 
     #ignore this for now, will use later
@@ -117,7 +119,9 @@ def assignment(class_val, module):
         c.correct_answer
         FROM quiz q
         join c in q.questions
-        where q.id = @class_val
+        where q.class = @class_val
+        and q.module = @module
+        and c.question_num = @q_num
     """
 
     query = """
@@ -128,8 +132,6 @@ def assignment(class_val, module):
         and c.module = @module
     """
 
-    print(class_val)
-    print(module)
     parameters = [
         {
             "name" : "@class_val",
@@ -197,7 +199,7 @@ def exercise_review(exercise):
         return redirect(url_for("auth_bp.login"))
      
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     # TODO rbb need to update to wrap queries in something where redirects on bad query
     query = "SELECT * FROM c where c.id=@id"
@@ -248,7 +250,7 @@ def exercise_review_open(exercise,questionnum):
         return redirect(url_for("auth_bp.login"))
      
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id=@id"
     # rbb 08/13 - update to parameterized queries
@@ -290,7 +292,7 @@ def exercise_form(exercise):
         
     course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id=@id"
     # rbb 08/13 - update to parameterized queries
@@ -334,7 +336,7 @@ def student_center():
         #Get course name
         class_name=request.form['wg1']
         #Get quiz format from Cosmos
-        container=init_cosmos('quiz','bids-class')
+        container=init_cosmos('quiz',DATABASE)
         query = f"SELECT * FROM c where c.class='{class_name.lower()}' ORDER BY c.module"
         items = list(container.query_items(
             query=query,
@@ -356,36 +358,36 @@ def student_center():
 
 
 # rbb 8/19 may want to add an API key to override general workflow managed by session variables
-@classroom_bp.route("/add_user/<userId>",methods=['GET'])
-def add_user(userId):
+@classroom_bp.route("/add_user",methods=['POST', 'GET'])
+def add_user(userId = 'testuser123'):
 
     user_name = ich.check_user_session(session)
 
-    if ich.check_permissions(user_name, 'create_user'):
-        container=init_cosmos('users','bids-class')
-        container.upsert_item({
-            'id' : userId,
-            'userId' : userId,
-            'name' : 'test user2',
-            'role' : 'user',
-            'class_access' : [
-                'pmap',
-            ],
-        })
+    #if ich.check_permissions(user_name, 'create_user'):
+    container=init_cosmos('users',DATABASE)
+    container.upsert_item({
+        'id' : userId,
+        'userId' : userId,
+        'name' : 'test user2',
+        'role' : 'user',
+        'class_access' : [
+            'pmap',
+        ],
+    })
     
     # this should probably just be called as a post. return success or failure as status
-    else:
-        return 0
+    #else:
+    #    return 0
 
 # rbb 8/18 need a route to authorize a user for a class, or module and deny
-@classroom_bp.route("/authorize_user/<user_id>/<class_val>",methods=['GET'])
+@classroom_bp.route("/authorize_user/<user_id>/<class_val>",methods=['POST'])
 def authorize_user(user_id, class_val):
 
     user_name = ich.check_user_session(session)
 
     # needs to appropriate handle status codes and check for errors
     if ich.check_permissions(user_name, 'authorize_user'):
-        container=init_cosmos('users','bids-class')
+        container=init_cosmos('users',DATABASE)
         user = container.read_item(item=user_id, partition_key=user_id)
         user['class_access'].append(class_val)
         container.replace_item(item=user, body=user)
@@ -400,33 +402,78 @@ def deny_user(user, class_val, module):
     user_name = ich.check_user_session(session)
 
     if ich.check_permissions(user_name, 'deny_user'):
-        container=init_cosmos('users','bids-class')
+        container=init_cosmos('users',DATABASE)
         user = container.read_item(item=user_name, partition_key=user_name)
         user['class_access'].remove(class_val)
         container.replace_item(item=user, body=user)
     return 0
 
 # rbb 8/18 need a route to update questions
+@classroom_bp.route("/update_question",methods=['POST','GET'])
 def update_question():
 
-    user_name = ich.check_user_session(session)
+    #user_name = ich.check_user_session(session)
+    data = json.loads(request.get_json())
+    print(type(data))
+    try:
+        class_val = data['class_val']
+        module_val = data['module_val']
+        question_val = data['question']
+    except:
+        return 401
+
+    print("getting here")
+
+
+    query = """
+        SELECT
+            *
+        FROM quiz q
+        where q.class = @class_val
+        and q.module = @module_val
+    """
+
+    parameters = [
+        {
+            "name" : "@class_val",
+            "value" : class_val.lower()
+        },
+        {
+            "name" : "@module_val",
+            "value" : int(module_val)
+        },
+    ]
+
+    print(parameters)
+    container=init_cosmos('quiz',DATABASE)
+
+    result = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True))
+    
+
+
+    if len(result) != 1:
+        return "Error in results",401
+    
 
     # needs to appropriate handle status codes and check for errors
-    if ich.check_permissions(user_name, 'update_question'):
-        container=init_cosmos('quiz','bids-class')
-        question = container.read_item(item=user_id, partition_key=user_id)
-        user['class_access'].append(class_val)
-        container.replace_item(item=user, body=user)
+    #if ich.check_permissions(user_name, 'update_question'):
 
-        return 200
+    for i, question in enumerate(result[0]['questions']):        
+        if question['question_num'] == question_val['question_num']:
+            # rbb 08/26 do we need to validate the data in the question field?
+            result[0]['questions'][i] = question_val
+            break
+
+    container.replace_item(item=result[0]['id'], body=result[0])
+
+    return "success", 200
     
-    else:
-        return 301
+    #else:
+    #    return 301
 
 # rbb 8/18 need a route to add quizzes
 def add_quiz():
     return 0
-
-
-
-
