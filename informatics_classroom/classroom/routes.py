@@ -18,7 +18,7 @@ DATABASE = Config.DATABASE
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
-answerkey=load_answerkey('quiz',Config.DATABASE)
+#answerkey=load_answerkey('quiz',Config.DATABASE)
 
 # rbb good
 @classroom_bp.route('/home')
@@ -63,8 +63,52 @@ def submit_answer():
     question_num=int(request.form['question_num'])
     answer_num=request.form['answer_num']
 
-    if module_name in answerkey.keys():
-        questions=answerkey[module_name]  
+    # rbb 09/03
+
+    container=init_cosmos('quiz',Config.DATABASE)
+
+    query = """
+        SELECT
+        c.question_num,
+        c.correct_answer,
+        c.open
+        FROM quiz q
+        join c in q.questions
+        where q.class = @class_val
+        and q.module = @module_val
+        and c.question_num = @q_num
+    """
+
+    parameters = [
+        {
+            "name" : "@class_val",
+            "value" : partition_key.lower()
+        },
+        {
+            "name" : "@module_val",
+            "value" : int(module_num)
+        },
+        {
+            "name" : "@q_num",
+            "value" : int(question_num)
+        },
+    ]
+
+    question = list(container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True
+        )
+    )
+
+    if len(question) != 1:
+        return jsonify({"Something went wrong"}),400
+    else:
+        question = question[0]
+    
+    print(question)
+
+    # need to quit here if answer key doesn't exist
 
     #Logging - Get the max RowKey and increment to make unique
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
@@ -82,21 +126,30 @@ def submit_answer():
 
     #Checks to see if its an open question, if it is empty answer_num so it will return tru
     #Note the attempt dictionary already logged the actual answer  
-    if len(questions[question_num])==0:
-        answer_num=""  
 
-    if str(questions[question_num])==str(answer_num):        
+    #if len(questions[question_num])==0:
+    #    answer_num=""  
+
+    # check if open ended question first
+    if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
         #Log success for team
         nextquestion=''
         attempt['correct']=1
         table_service.insert_or_replace_entity('attempts',attempt)
         return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
+    
+    elif (str(question['correct_answer'])==str(answer_num)):       
+        #Log success for team
+        nextquestion=''
+        attempt['correct']=1
+        table_service.insert_or_replace_entity('attempts',attempt)
+        return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
+    
     else:
         #Log failure for team
         attempt['correct']=0
         table_service.insert_or_replace_entity('attempts',attempt)
         return jsonify({"message":"Sorry, wrong answer"}),406  
-    return jsonify({"Something went wrong"}),400
 
 
 
@@ -106,23 +159,12 @@ def assignment(class_val, module):
     # for testing 
     user_name = ich.check_user_session(session)
 
-    container=init_cosmos('quiz',DATABASE)
+    container=init_cosmos('quiz',Config.DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
 
     #ignore this for now, will use later
     class_val = escape(class_val)
     module = escape(module)
-
-    query = """
-        SELECT
-        c.question_num,
-        c.correct_answer
-        FROM quiz q
-        join c in q.questions
-        where q.class = @class_val
-        and q.module = @module
-        and c.question_num = @q_num
-    """
 
     query = """
         SELECT
@@ -284,39 +326,51 @@ def exercise_review_open(exercise,questionnum):
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
 
 
-@classroom_bp.route("/exercise_form/<exercise>",methods=['GET','POST'])
-def exercise_form(exercise):
+@classroom_bp.route("/exercise_form/<class_val>/<module_val>",methods=['GET'])
+def exercise_form(class_val, module_val):
     """Exercise Form"""
     #Step 1 get user information
     user_name = ich.check_user_session(session)
-        
-    course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id=@id"
-    # rbb 08/13 - update to parameterized queries
+    query = """
+        SELECT
+        *
+        FROM c 
+        where c.class = @class_val
+        and c.module = @module_val
+    """
+
     parameters = [
         {
-            "name" : "@id",
-            "value" : exercise.lower()
+            "name" : "@class_val",
+            "value" : class_val.lower()
+        },
+        {
+            "name" : "@module_val",
+            "value" : int(module_val)
         },
     ]
-
+ 
     items = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True )) 
-    
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True
+        )
+    )
+
+    print(items)
+
     if len(items)==0:
-        return f"No assignment found with the name of {exercise}"
+        return f"No assignment found with the name of {class_val + module_val}"
     qnum=len(items[0]['questions'])
     #step 3 create form for that exercise
     class A(FlaskForm):
         a1 = StringField("Question Label")
     
     class B(FlaskForm):
-        q=FieldList(FormField(A),min_entries=qnum)
+        q=FieldList(FormField(A), min_entries=qnum)
         s=SubmitField("Submit Form")
 
     form=B()
@@ -414,16 +468,12 @@ def update_question():
 
     #user_name = ich.check_user_session(session)
     data = json.loads(request.get_json())
-    print(type(data))
     try:
         class_val = data['class_val']
         module_val = data['module_val']
         question_val = data['question']
     except:
         return 401
-
-    print("getting here")
-
 
     query = """
         SELECT
