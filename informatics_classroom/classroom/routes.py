@@ -11,10 +11,12 @@ from informatics_classroom.config import Keys, Config
 import informatics_classroom.classroom.helpers as ich
 from markupsafe import escape
 import json
+import uuid
+
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
-DATABASE = Config.DATABASE
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -34,7 +36,7 @@ def quiz():
 @classroom_bp.route("/submit-answer",methods=['GET','POST'])
 def submit_answer():
 
-    user_name = ich.check_user_session(session)
+    #user_name = ich.check_user_session(session)
 
     # rbb 8/18 i think this needs to be a different route, this should always be post
     if request.method=='GET':
@@ -65,7 +67,7 @@ def submit_answer():
 
     # rbb 09/03
 
-    container=init_cosmos('quiz',Config.DATABASE)
+    container=init_cosmos('quiz','bids-class')
 
     query = """
         SELECT
@@ -106,23 +108,18 @@ def submit_answer():
     else:
         question = question[0]
     
-    print(question)
-
     # need to quit here if answer key doesn't exist
 
-    #Logging - Get the max RowKey and increment to make unique
-    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    RowKey=str(len(list(table_service.query_entities('attempts')))+1)
-
-    attempt={'PartitionKey':module_name,
-            'RowKey':RowKey,
-            'course':partition_key,
-            'module': module_name,
-            # rbb 8/18 should this be user name?
-            'team': request.form['team'],
-            'question': question_num,
-            'answer':str(answer_num)
-    } 
+    attempt = {
+        'PartitionKey':module_name,
+        'id': str(uuid.uuid4()),
+        'course':partition_key,
+        'module': module_num,
+        # rbb 8/18 should this be user name?
+        'team': request.form['team'],
+        'question': question_num,
+        'answer':str(answer_num)
+    }
 
     #Checks to see if its an open question, if it is empty answer_num so it will return tru
     #Note the attempt dictionary already logged the actual answer  
@@ -131,24 +128,27 @@ def submit_answer():
     #    answer_num=""  
 
     # check if open ended question first
+
+    container=init_cosmos('answer','bids-class')
+
     if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
         #Log success for team
         nextquestion=''
         attempt['correct']=1
-        table_service.insert_or_replace_entity('attempts',attempt)
+        container.upsert_item(attempt)
         return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
     
     elif (str(question['correct_answer'])==str(answer_num)):       
         #Log success for team
         nextquestion=''
         attempt['correct']=1
-        table_service.insert_or_replace_entity('attempts',attempt)
+        container.upsert_item(attempt)
         return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
     
     else:
         #Log failure for team
         attempt['correct']=0
-        table_service.insert_or_replace_entity('attempts',attempt)
+        container.upsert_item(attempt)
         return jsonify({"message":"Sorry, wrong answer"}),406  
 
 
@@ -159,7 +159,7 @@ def assignment(class_val, module):
     # for testing 
     user_name = ich.check_user_session(session)
 
-    container=init_cosmos('quiz',Config.DATABASE)
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
 
     #ignore this for now, will use later
@@ -191,7 +191,6 @@ def assignment(class_val, module):
             enable_cross_partition_query=True
         )
     )
-    print(items)
     if len(items)==0:
         return f"No assignment found for class {class_val} and module {module}"
     #{}".format(exercise)
@@ -202,21 +201,24 @@ def assignment(class_val, module):
     table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
     tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'") 
     df=pd.DataFrame(tasks)
-
+    print(df)
     # rbb we'll check to see if something is returned at all, and if it is, flag
     # where it has been attempted 
     attempted = True
     if not df.empty:
-        df=df[df['PartitionKey']==f"{class_val.lower()}"]        
+        df=df[df['PartitionKey']==f"{class_val.lower()}_{module}"]        
     if df.empty:
         attempted = False
 
+    print(df)
+    print(assignment)
     qnum,anum=0,0
     # rbb i think this should just be changed to enumerate? prevent missing indices
     for i in range(0,len(assignment)):
         q_num=assignment[i]['question_num']
-        attempts=len(df[df.question==str(q_num)]) if attempted else 0
-        correct=len(df[(df.question==str(q_num))&(df.correct==1)])>0 if attempted else 0
+        df['question'] = pd.to_numeric(df.question)
+        attempts=len(df[df.question==int(q_num)]) if attempted else 0
+        correct=len(df[(df.question==int(q_num))&(df.correct)]) if attempted else 0
         assignment[i]['attempts']=attempts
         assignment[i]['correct']=correct
         qnum+=1
@@ -230,7 +232,7 @@ def assignment(class_val, module):
     # rbb 8/18 do we need to close the connection?
     return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
 
-@classroom_bp.route("/exercise_review/<class_val>/<module>")
+@classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
     user_name = ich.check_user_session(session)
@@ -241,10 +243,10 @@ def exercise_review(exercise):
         return redirect(url_for("auth_bp.login"))
      
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz',DATABASE)
+    container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     # TODO rbb need to update to wrap queries in something where redirects on bad query
-    query = "SELECT * FROM c where c.id=@id"
+    query = "SELECT c.PartitionKey, c.course, c.module, c.answer, c.team, c.question, c.correct FROM c where c.PartitionKey = @id"
 
     # rbb 08/13 - update to parameterized queries
     parameters = [
@@ -262,16 +264,17 @@ def exercise_review(exercise):
         return f"No assignment found with the name of {exercise}"
     
     # Step 3 get all the attempts made for that exercise
-    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
-    df=pd.DataFrame(tasks)
+    #table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
+    #tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
+    df=pd.DataFrame(items)
+    df['question'] = pd.to_numeric(df['question'])
     # Step 4 construct dataframe to send to html page
     if not df.empty:
-        df1=df.groupby(['team','question']).agg({'correct':'max'}).reset_index()
+        df1=df.copy().groupby(['team','question']).agg({'correct':'max'}).reset_index()
         df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
         df2['score']=df2.iloc[:,1:].sum(axis=1)
-        df1=df.groupby(['team','question'])['answer'].count().reset_index()
-        df3=df1.pivot_table(index='team',columns='question')
+        df1=df.copy().groupby(['team','question'])['answer'].count().reset_index()
+        df3=df1.copy().pivot_table(index='team',columns='question').reset_index()
 
     # rbb set dummy holders
     else:
@@ -463,7 +466,7 @@ def deny_user(user, class_val, module):
     return 0
 
 # rbb 8/18 need a route to update questions
-@classroom_bp.route("/update_question",methods=['POST','GET'])
+@classroom_bp.route("/update_question",methods=['POST'])
 def update_question():
 
     #user_name = ich.check_user_session(session)

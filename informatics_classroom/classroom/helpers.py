@@ -5,7 +5,7 @@ from informatics_classroom.azure_func import init_cosmos,load_answerkey
 
 def check_user_session(session):
     if Config.TESTING:
-        session['user'] = {'preferred_username' : 'user_test'}	
+        session['user'] = {'preferred_username' : 'rbarre16'}	
         user_name = session['user']
     else:
         print(session)
