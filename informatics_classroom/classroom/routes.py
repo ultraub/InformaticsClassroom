@@ -105,7 +105,7 @@ def submit_answer():
         'team': request.form['team'],
         'question': question_num,
         'answer':str(answer_num),
-        'datetime': dt.datetime.now()
+        'datetime': str(dt.datetime.now())
     }
 
     container=init_cosmos('answer',DATABASE)
