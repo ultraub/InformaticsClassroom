@@ -381,7 +381,7 @@ def update_question():
             # rbb 08/26 do we need to validate the data in the question field?
             result[0]['questions'][i] = question_val
             result[0]['questions'][i]['updated_by'] = updated_by
-            result[0]['questions'][i]['update_datetime'] = dt.datetime.now()
+            result[0]['questions'][i]['update_datetime'] = str(dt.datetime.now())
             break
 
     container.replace_item(item=result[0]['id'], body=result[0])
