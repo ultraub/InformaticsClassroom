@@ -6,4 +6,4 @@ app.config.from_object(Config)
 #print(app.config)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug = Config.DEBUG, port = 8001)
