@@ -8,14 +8,14 @@ from informatics_classroom.azure_func import init_cosmos,load_answerkey
 from informatics_classroom.classroom import classroom_bp
 from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
-import uuid
-import json
+import informatics_classroom.classroom.helpers as ich
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
-DATABASE = Config.DATABASE
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
+
+answerkey=load_answerkey('quiz','bids-class')
 
 # rbb good
 @classroom_bp.route('/home')
@@ -30,15 +30,13 @@ def quiz():
 # rbb shouldn't this just be post? needs to check user
 @classroom_bp.route("/submit-answer",methods=['GET','POST'])
 def submit_answer():
-    # rbb 8/18 i think this needs to be a different route, this should always be post
     if request.method=='GET':
         form=AnswerForm()
         return render_template('answerform.html',title='AnswerForm',form=form)
-    
     sub_fields=['module', 'team', 'question_num', 'answer_num']
     for field in sub_fields:
         if field not in request.form.keys():
-            return jsonify({"message":f"Bad request, missing field {field}"}),400
+            return jsonify({"message":"Bad request, missing field {}".format(field)}),400
     # Get the answer key
     if 'class' in request.form.keys():
         #removing use of class as a variable name
@@ -48,88 +46,49 @@ def submit_answer():
     module_num=request.form['module']
     module_name=partition_key+"_"+ module_num
     
+    
+
+    #container=init_cosmos('quiz','bids-class')
+    #output=container.read_item(item=item_name,partition_key=partition_key)
+    #questions=output['questions']
+  
     question_num=int(request.form['question_num'])
     answer_num=request.form['answer_num']
 
-    # rbb 09/03
+    if module_name in answerkey.keys():
+        questions=answerkey[module_name]  
 
-    container=init_cosmos('quiz',DATABASE)
+    #Logging - Get the max RowKey and increment to make unique
+    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
+    RowKey=str(len(list(table_service.query_entities('attempts')))+1)
 
-    query = """
-        SELECT
-        c.question_num,
-        c.correct_answer,
-        c.endpoint,
-        c.query,
-        c.open
-        FROM quiz q
-        join c in q.questions
-        where q.class = @class_val
-        and q.module = @module_val
-        and c.question_num = @q_num
-    """
+    attempt={'PartitionKey':module_name,
+            'RowKey':RowKey,
+            'course':partition_key,
+            'module': module_name,
+            'team': request.form['team'],
+            'question': question_num,
+            'answer':str(answer_num)
+    } 
 
-    parameters = [
-        {
-            "name" : "@class_val",
-            "value" : partition_key.lower()
-        },
-        {
-            "name" : "@module_val",
-            "value" : int(module_num)
-        },
-        {
-            "name" : "@q_num",
-            "value" : int(question_num)
-        },
-    ]
+    #Checks to see if its an open question, if it is empty answer_num so it will return tru
+    #Note the attempt dictionary already logged the actual answer  
+    if len(questions[question_num])==0:
+        answer_num=""  
 
-    question = list(container.query_items(
-            query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
-        )
-    )
-
-    if len(question) != 1:
-        return jsonify({"Something went wrong"}),400
-    else:
-        question = question[0]
-    
-    # need to quit here if answer key doesn't exist
-
-    attempt = {
-        'PartitionKey':module_name,
-        'id': str(uuid.uuid4()),
-        'course':partition_key,
-        'module': module_num,
-        # rbb 8/18 should this be user name?
-        'team': request.form['team'],
-        'question': question_num,
-        'answer':str(answer_num)
-    }
-
-    container=init_cosmos('answer',DATABASE)
-
-    if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
+    if str(questions[question_num])==str(answer_num):        
         #Log success for team
         nextquestion=''
         attempt['correct']=1
-        container.upsert_item(attempt)
+        table_service.insert_or_replace_entity('attempts',attempt)
         return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
-    
-    elif (str(question['correct_answer'])==str(answer_num)):       
-        #Log success for team
-        nextquestion=''
-        attempt['correct']=1
-        container.upsert_item(attempt)
-        return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
-    
     else:
         #Log failure for team
         attempt['correct']=0
-        container.upsert_item(attempt)
-        return jsonify({"message":"Sorry, wrong answer"}),406 
+        table_service.insert_or_replace_entity('attempts',attempt)
+        return jsonify({"message":"Sorry, wrong answer"}),406  
+    return jsonify({"Something went wrong"}),400
+
 
 
 @classroom_bp.route("/assignment/<exercise>")
@@ -376,61 +335,4 @@ def student_center():
     return render_template("studentcenter.html",title='Student Center',form=ClassForm(),user=session["user"],items=items)
 
    
-# rbb 8/18 need a route to update questions
-@classroom_bp.route("/update_question",methods=['POST'])
-def update_question():
 
-    #user_name = ich.check_user_session(session)
-    data = json.loads(request.get_json())
-    try:
-        class_val = data['class_val']
-        module_val = data['module_val']
-        question_val = data['question']
-    except:
-        return 401
-
-    query = """
-        SELECT
-            *
-        FROM quiz q
-        where q.class = @class_val
-        and q.module = @module_val
-    """
-
-    parameters = [
-        {
-            "name" : "@class_val",
-            "value" : class_val.lower()
-        },
-        {
-            "name" : "@module_val",
-            "value" : int(module_val)
-        },
-    ]
-
-    print(parameters)
-    container=init_cosmos('quiz',DATABASE)
-
-    result = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True))
-    
-
-
-    if len(result) != 1:
-        return "Error in results",401
-    
-
-    # needs to appropriate handle status codes and check for errors
-    #if ich.check_permissions(user_name, 'update_question'):
-
-    for i, question in enumerate(result[0]['questions']):        
-        if question['question_num'] == question_val['question_num']:
-            # rbb 08/26 do we need to validate the data in the question field?
-            result[0]['questions'][i] = question_val
-            break
-
-    container.replace_item(item=result[0]['id'], body=result[0])
-
-    return "success", 200
