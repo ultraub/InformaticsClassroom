@@ -143,7 +143,7 @@ def assignment(exercise):
         if 'return_to' in session.keys():
             exercise=session['exercise']
     user_name=session['user'].get('preferred_username').split('@')[0]
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
@@ -186,7 +186,7 @@ def exercise_review(exercise):
     user_name=session['user'].get('preferred_username').split('@')[0]
     course_name=str(exercise).split('_')[0]   
     authorized_user=False
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     items=container.read_item(item="auth_users",partition_key="auth")
     for name in items['users']:
         if user_name in name:
@@ -196,7 +196,7 @@ def exercise_review(exercise):
     if not authorized_user:
         return redirect(url_for("auth_bp.login"))      
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
@@ -232,7 +232,7 @@ def exercise_review_open(exercise,questionnum):
     user_name=session['user'].get('preferred_username').split('@')[0]
     course_name=str(exercise).split('_')[0]   
     authorized_user=False
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     items=container.read_item(item="auth_users",partition_key="auth")
     for name in items['users']:
         if user_name in name:
@@ -243,7 +243,7 @@ def exercise_review_open(exercise,questionnum):
         return redirect(url_for("auth_bp.login"))      
 
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
@@ -274,7 +274,7 @@ def exercise_form(exercise):
     user_name=session['user'].get('preferred_username').split('@')[0]
     course_name=str(exercise).split('_')[0]
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
     items = list(container.query_items(
@@ -304,7 +304,7 @@ def student_center():
         #Get course name
         class_name=request.form['wg1']
         #Get quiz format from Cosmos
-        container=init_cosmos('quiz','bids-class')
+        container=init_cosmos('quiz',DATABASE)
         query = "SELECT * FROM c where c.class='{}' ORDER BY c.module".format(class_name.lower())
         items = list(container.query_items(
             query=query,
