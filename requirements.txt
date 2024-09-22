@@ -13,5 +13,3 @@ werkzeug>2
 flask-session>=0.3.2
 requests>=2
 msal>=1.7
-json
-uuid
