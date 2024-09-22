@@ -10,6 +10,7 @@ from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
 import uuid
 import json
+import datetime as dt
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
@@ -103,7 +104,8 @@ def submit_answer():
         # rbb 8/18 should this be user name?
         'team': request.form['team'],
         'question': question_num,
-        'answer':str(answer_num)
+        'answer':str(answer_num),
+        'datetime': dt.datetime.now()
     }
 
     container=init_cosmos('answer',DATABASE)
@@ -335,6 +337,7 @@ def update_question():
         class_val = data['class_val']
         module_val = data['module_val']
         question_val = data['question']
+        updated_by = data['user']
     except:
         return 401
 
@@ -357,7 +360,6 @@ def update_question():
         },
     ]
 
-    print(parameters)
     container=init_cosmos('quiz',DATABASE)
 
     result = list(container.query_items(
@@ -378,6 +380,8 @@ def update_question():
         if question['question_num'] == question_val['question_num']:
             # rbb 08/26 do we need to validate the data in the question field?
             result[0]['questions'][i] = question_val
+            result[0]['questions'][i]['updated_by'] = updated_by
+            result[0]['questions'][i]['update_datetime'] = dt.datetime.now()
             break
 
     container.replace_item(item=result[0]['id'], body=result[0])
