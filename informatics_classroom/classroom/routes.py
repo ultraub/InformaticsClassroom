@@ -106,7 +106,7 @@ def submit_answer():
         'answer':str(answer_num)
     }
 
-    container=init_cosmos('answer','bids-class')
+    container=init_cosmos('answer',DATABASE)
 
     if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
         #Log success for team
