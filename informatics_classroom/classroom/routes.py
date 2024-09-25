@@ -198,25 +198,44 @@ def exercise_review(exercise):
     if not authorized_user:
         return redirect(url_for("auth_bp.login"))      
     # Step 2 get the exercise Structure
-    container=init_cosmos('quiz',DATABASE)
+     
+    # Step 2 get the exercise Structure
+    container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    # TODO rbb need to update to wrap queries in something where redirects on bad query
+    query = "SELECT c.PartitionKey, c.course, c.module, c.answer, c.team, c.question, c.correct FROM c where c.PartitionKey = @id"
+
+    # rbb 08/13 - update to parameterized queries
+    parameters = [
+        {
+            "name" : "@id",
+            "value" : exercise.lower()
+        },
+    ]
+
     items = list(container.query_items(
         query=query,
+        parameters=parameters,
         enable_cross_partition_query=True )) 
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
-    assignment=items[0]['questions']
+        return f"No assignment found with the name of {exercise}"
+    
     # Step 3 get all the attempts made for that exercise
-    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
-    df=pd.DataFrame(tasks)
+    df=pd.DataFrame(items)
+    df['question'] = pd.to_numeric(df['question'])
     # Step 4 construct dataframe to send to html page
-    df1=df.groupby(['team','question']).agg({'correct':'max'}).reset_index()
-    df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
-    df2['score']=df2.iloc[:,1:].sum(axis=1)
-    df1=df.groupby(['team','question'])['answer'].count().reset_index()
-    df3=df1.pivot_table(index='team',columns='question')
+    if not df.empty:
+        df1=df.copy().groupby(['team','question']).agg({'correct':'max'}).reset_index()
+        df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
+        df2['score']=df2.iloc[:,1:].sum(axis=1)
+        df1=df.copy().groupby(['team','question'])['answer'].count().reset_index()
+        df3=df1.copy().pivot_table(index='team',columns='question').reset_index()
+
+    # rbb set dummy holders
+    else:
+        df2 = df
+        df3 = df
+
     return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False),df3.to_html(classes='data',index=False)], exercise=exercise)
 
 
