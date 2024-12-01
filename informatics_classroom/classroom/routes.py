@@ -177,14 +177,12 @@ def assignment(class_val, module):
             "value" : str(user_name).lower()
         }
     ]
- 
     items = list(container.query_items(
             query=query,
             parameters=parameters,
             enable_cross_partition_query=True
         )
     )
-    print(items)
 
     if len(items)==0:
         return f"No assignment found for class {class_val} and module {module}"
@@ -200,12 +198,14 @@ def assignment(class_val, module):
     if df.empty:
         attempted = False
 
-    qnum,anum=0,0
     # rbb i think this should just be changed to enumerate? prevent missing indices
     assignment = df.groupby('question').agg({'correct' : ['max','count']})
     print(assignment.reset_index())
     df1=pd.DataFrame(assignment).reset_index()
     df1.columns = ["_".join(a) for a in df1.columns.to_flat_index()]
+    df1.columns = ['Question Number', 'Correct', 'Attempt Count']
+    
+    qnum, anum = df1['Question Number'].count(), df1['Correct'].sum()
    # df1.sort_values('question',inplace=True)
     #df1.reset_index(drop=True,inplace=True)
 

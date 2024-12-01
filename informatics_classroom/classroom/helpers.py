@@ -8,7 +8,6 @@ def check_user_session(session):
         session['user'] = {'preferred_username' : 'rbarre16'}	
         user_name = session['user']
     else:
-        print(session)
         try:
             if not session.get("user"):
                 #Test if user session is set
