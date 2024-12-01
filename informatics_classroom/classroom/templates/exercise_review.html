@@ -1,14 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link href="/static/style.css" rel="stylesheet">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Exercise Review{% endblock %}
+{% block content %}
+<div class="container mt-4">
     <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
     <h2>Assignment Page for Exercise {{ exercise }}</h2>
-    {% for table in tables %}
-        {{ table|safe }}
-    {% endfor %}
 
-</body>
+    <!-- Correctness and Total Score Table -->
+<!-- Correctness and Total Score Table -->
+    <h3>Correctness and Total Score</h3>
+    <div class="table-responsive mb-4">
+        <table id="correctness-table" class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    {% for col in table_correct.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_correct.itertuples(index=False) %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Total Attempts Table -->
+    <h3>Total Attempts</h3>
+    <div class="table-responsive mb-4">
+        <table id="attempts-table" class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    {% for col in table_attempts.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_attempts.itertuples(index=False) %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#correctness-table').DataTable({
+            responsive: true,
+            dom: 'Bfrtip',
+            buttons: ['csv', 'excel', 'pdf', 'print']
+        });
+
+        $('#attempts-table').DataTable({
+            responsive: true,
+            dom: 'Bfrtip',
+            buttons: ['csv', 'excel', 'pdf', 'print']
+        });
+    });
+</script>
+{% endblock %}
+

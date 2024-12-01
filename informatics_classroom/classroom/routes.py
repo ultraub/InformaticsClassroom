@@ -16,8 +16,8 @@ from markupsafe import escape
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
-DATABASE = Config.DATABASE
-#DATABASE = 'bids-class'
+#DATABASE = Config.DATABASE
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -156,7 +156,8 @@ def assignment(class_val, module):
             c.answer, 
             c.team, 
             c.question, 
-            c.correct 
+            c.correct,
+            (c.datetime = null) ? c.Timestamp : c.datetime datetime    
         FROM c 
         where c.course = @class_val
         and c.module = @module
@@ -210,8 +211,16 @@ def assignment(class_val, module):
     #df1.reset_index(drop=True,inplace=True)
 
     # rbb 8/18 do we need to close the connection?
-    return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
-
+    return render_template(
+        "assignment.html",
+        title='Assignment',
+        user=session["user"],
+        table=df1,
+        class_val=class_val,
+        module=module,
+        qnum=qnum,
+        anum=anum
+    )
 
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
@@ -237,7 +246,8 @@ def exercise_review(exercise):
         c.answer, 
         c.team, 
         c.question, 
-        c.correct 
+        c.correct,
+        (c.datetime = null) ? c.Timestamp : c.datetime datetime    
     FROM c 
     where c.PartitionKey = @id
     """
@@ -257,23 +267,58 @@ def exercise_review(exercise):
     if len(items)==0:
         return f"No assignment found with the name of {exercise}"
     
-    # Step 3 get all the attempts made for that exercise
     df=pd.DataFrame(items)
     df['question'] = pd.to_numeric(df['question'])
-    # Step 4 construct dataframe to send to html page
+
     if not df.empty:
-        df1=df.copy().groupby(['team','question']).agg({'correct':'max'}).reset_index()
-        df2=df1.pivot_table(index='team',columns='question',values='correct').reset_index()
-        df2['score']=df2.iloc[:,1:].sum(axis=1)
-        df1=df.copy().groupby(['team','question'])['answer'].count().reset_index()
-        df3=df1.copy().pivot_table(index='team',columns='question').reset_index()
+        # Ensure 'datetime' is in the DataFrame and properly formatted
+        df['datetime'] = pd.to_datetime(df['datetime'])
 
-    # rbb set dummy holders
-    else:
-        df2 = df
-        df3 = df
+        # Add quarter and year columns
+        df['quarter'] = df['datetime'].dt.quarter
+        df['year'] = df['datetime'].dt.year
 
-    return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False),df3.to_html(classes='data',index=False)], exercise=exercise)
+        # Filter out rows with NaN in 'quarter' or 'year'
+        df = df.dropna(subset=['quarter', 'year'])
+
+        # Generate the table for correctness (1 = right, 0 = wrong) and total score
+        df_correct = df.copy().groupby(['team', 'question']).agg({'correct': 'max'}).reset_index()
+        table_correct = df_correct.pivot_table(index='team', columns='question', values='correct').reset_index()
+        table_correct['score'] = table_correct.iloc[:, 1:].sum(axis=1)  # Calculate total score
+        table_correct = table_correct.fillna(0)  # Replace NaN with 0
+        table_correct.columns.name = None  # Remove multi-index header
+
+        # Add quarter and year to the correctness table
+        table_correct = table_correct.merge(
+            df[['team', 'quarter', 'year']].drop_duplicates(),
+            on='team',
+            how='left'
+        )
+
+        # Generate the table for total attempts
+        df_attempts = df.copy().groupby(['team', 'question'])['answer'].count().reset_index()
+        table_attempts = df_attempts.pivot_table(index='team', columns='question', values='answer').reset_index()
+        table_attempts = table_attempts.fillna(0)  # Replace NaN with 0
+        table_attempts.columns.name = None  # Remove multi-index header
+
+        # Add quarter and year to the attempts table
+        table_attempts = table_attempts.merge(
+            df[['team', 'quarter', 'year']].drop_duplicates(),
+            on='team',
+            how='left'
+        )
+
+        return render_template(
+            "exercise_review.html",
+            title='Exercise Review',
+            user=session["user"],
+            table_correct=table_correct,
+            table_attempts=table_attempts,
+            exercise=exercise
+        )
+
+
+
 
 
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")

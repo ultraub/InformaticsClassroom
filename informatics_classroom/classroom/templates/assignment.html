@@ -1,15 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link href="/static/style.css" rel="stylesheet">
-</head>
-<body>
-    <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
-    <h2>Assignment Page for Exercise {{ exercise }}</h2>
-    {% for table in tables %}
-        {{ table|safe }}
-    {% endfor %}
-    <h2> You have correctly answered {{anum}} out of {{qnum}}</h2>
+{% extends "base.html" %}
+{% block title %}Assignment{% endblock %}
 
-</body>
+{% block content %}
+<div class="container mt-4">
+    <h2>Welcome {{ user.get('preferred_username').split('@')[0] }}!</h2>
+    <h2>Assignment Page for {{ class_val }} Module {{ module }}</h2>
+
+    <div class="table-responsive">
+        <table id="assignment-table" class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    {% for col in table.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table.itertuples(index=False) %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2>You have correctly answered {{ anum }} out of {{ qnum }}</h2>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#assignment-table').DataTable({
+            responsive: true,
+            paging: true,
+            searching: true,
+            ordering: true,
+            dom: 'Bfrtip',
+            buttons: ['csv', 'excel', 'pdf', 'print']
+        });
+    });
+</script>
+{% endblock %}
