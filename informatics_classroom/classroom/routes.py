@@ -67,13 +67,15 @@ def submit_answer():
 
     # rbb 09/03
 
-    container=init_cosmos('quiz','bids-class')
+    container=init_cosmos('quiz',DATABASE)
 
     query = """
         SELECT
-        c.question_num,
-        c.correct_answer,
-        c.open
+            c.question_num,
+            c.correct_answer,
+            c.endpoint,
+            c.query,
+            c.open
         FROM quiz q
         join c in q.questions
         where q.class = @class_val
@@ -129,7 +131,7 @@ def submit_answer():
 
     # check if open ended question first
 
-    container=init_cosmos('answer','bids-class')
+    container=init_cosmos('answer',DATABASE)
 
     if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
         #Log success for team
@@ -159,19 +161,29 @@ def assignment(class_val, module):
     # for testing 
     user_name = ich.check_user_session(session)
 
-    container=init_cosmos('quiz',DATABASE)
+    container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
 
     #ignore this for now, will use later
     class_val = escape(class_val)
     module = escape(module)
+    user_name = escape(user_name)
 
+    # RBB 11/30 TODO will need to come back and join to questions, make sure to 
+    # account for possible questions, not just attempted
     query = """
         SELECT
-        *
+            c.PartitionKey, 
+            c.course, 
+            c.module, 
+            c.answer, 
+            c.team, 
+            c.question, 
+            c.correct 
         FROM c 
-        where c.class = @class_val
+        where c.course = @class_val
         and c.module = @module
+        and c.team = @user_name
     """
 
     parameters = [
@@ -181,8 +193,12 @@ def assignment(class_val, module):
         },
         {
             "name" : "@module",
-            "value" : int(module)
+            "value" : str(module).lower()
         },
+        {
+            "name" : "@user_name",
+            "value" : str(user_name).lower()
+        }
     ]
  
     items = list(container.query_items(
@@ -193,15 +209,9 @@ def assignment(class_val, module):
     )
     if len(items)==0:
         return f"No assignment found for class {class_val} and module {module}"
-    #{}".format(exercise)
-    
-    assignment=items[0]['questions']
 
-    #Query Tableservice to get all attempts to answer questions for this assignment
-    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'") 
-    df=pd.DataFrame(tasks)
-    print(df)
+    df=pd.DataFrame(items)
+
     # rbb we'll check to see if something is returned at all, and if it is, flag
     # where it has been attempted 
     attempted = True
@@ -210,24 +220,14 @@ def assignment(class_val, module):
     if df.empty:
         attempted = False
 
-    print(df)
-    print(assignment)
     qnum,anum=0,0
     # rbb i think this should just be changed to enumerate? prevent missing indices
-    for i in range(0,len(assignment)):
-        q_num=assignment[i]['question_num']
-        df['question'] = pd.to_numeric(df.question)
-        attempts=len(df[df.question==int(q_num)]) if attempted else 0
-        correct=len(df[(df.question==int(q_num))&(df.correct)]) if attempted else 0
-        assignment[i]['attempts']=attempts
-        assignment[i]['correct']=correct
-        qnum+=1
-        if correct==True:
-            anum+=1
-    df1=pd.DataFrame(assignment)
-    df1.drop('correct_answer',axis=1, inplace=True)
-    df1.sort_values('question_num',inplace=True)
-    df1.reset_index(drop=True,inplace=True)
+    assignment = df.groupby('question').agg({'correct' : ['max','count']})
+    print(assignment.reset_index())
+    df1=pd.DataFrame(assignment).reset_index()
+    df1.columns = ["_".join(a) for a in df1.columns.to_flat_index()]
+   # df1.sort_values('question',inplace=True)
+    #df1.reset_index(drop=True,inplace=True)
 
     # rbb 8/18 do we need to close the connection?
     return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
@@ -235,7 +235,7 @@ def assignment(class_val, module):
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    user_name = ich.check_user_session(session)
+    #user_name = ich.check_user_session(session)
 
     course_name=str(exercise).split('_')[0]   
 
@@ -246,7 +246,18 @@ def exercise_review(exercise):
     container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     # TODO rbb need to update to wrap queries in something where redirects on bad query
-    query = "SELECT c.PartitionKey, c.course, c.module, c.answer, c.team, c.question, c.correct FROM c where c.PartitionKey = @id"
+    query = """
+    SELECT 
+        c.PartitionKey, 
+        c.course, 
+        c.module, 
+        c.answer, 
+        c.team, 
+        c.question, 
+        c.correct 
+    FROM c 
+    where c.PartitionKey = @id
+    """
 
     # rbb 08/13 - update to parameterized queries
     parameters = [
@@ -264,8 +275,6 @@ def exercise_review(exercise):
         return f"No assignment found with the name of {exercise}"
     
     # Step 3 get all the attempts made for that exercise
-    #table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    #tasks = table_service.query_entities('attempts', filter=f"PartitionKey eq '{exercise}'") 
     df=pd.DataFrame(items)
     df['question'] = pd.to_numeric(df['question'])
     # Step 4 construct dataframe to send to html page
