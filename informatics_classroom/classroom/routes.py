@@ -8,13 +8,16 @@ from informatics_classroom.azure_func import init_cosmos,load_answerkey
 from informatics_classroom.classroom import classroom_bp
 from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
+import informatics_classroom.classroom.helpers as ich
 import uuid
 import json
 import datetime as dt
+from markupsafe import escape
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
-DATABASE = Config.DATABASE
+#DATABASE = Config.DATABASE
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -43,6 +46,7 @@ def submit_answer():
         partition_key=request.form['class']
     else:
         partition_key=request.form['class_name']
+
     module_num=request.form['module']
     module_name=partition_key+"_"+ module_num
     
@@ -55,16 +59,16 @@ def submit_answer():
 
     query = """
         SELECT
-        c.question_num,
-        c.correct_answer,
-        c.endpoint,
-        c.query,
-        c.open
+            c.question_num,
+            c.correct_answer,
+            c.endpoint,
+            c.query,
+            c.open
         FROM quiz q
         join c in q.questions
         where q.class = @class_val
-        and q.module = @module_val
-        and c.question_num = @q_num
+            and q.module = @module_val
+            and c.question_num = @q_num
     """
 
     parameters = [
@@ -130,13 +134,15 @@ def submit_answer():
         container.upsert_item(attempt)
         return jsonify({"message":"Sorry, wrong answer"}),406 
 
-@classroom_bp.route("/assignment/<exercise>")
-def assignment(exercise):
+@classroom_bp.route("/assignment/<class_val>/<module>")
+def assignment(class_val, module):
     """Assignment home"""
+
+    """
     if not session.get("user"):
         #Test if user session is set
         session["return_to"]="classroom_bp.assignment"
-        session['exercise']=exercise
+        session['exercise']=f"{class_val}_{module}"
         return redirect(url_for("auth_bp.login" ))
     if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
         #Test if authenticated user is coming from an authorized domain
@@ -144,36 +150,84 @@ def assignment(exercise):
     if len(exercise)==0:
         if 'return_to' in session.keys():
             exercise=session['exercise']
+
     user_name=session['user'].get('preferred_username').split('@')[0]
-    container=init_cosmos('quiz',DATABASE)
+    """
+
+    user_name = 'rbarre16'
+    session['user'] = 'rbarre16'
+    container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
+    class_val = escape(class_val)
+    module = escape(module)
+    user_name = escape(user_name)
+
+    # RBB 11/30 TODO will need to come back and join to questions, make sure to 
+    # account for possible questions, not just attempted
+    query = """
+        SELECT
+            c.PartitionKey, 
+            c.course, 
+            c.module, 
+            c.answer, 
+            c.team, 
+            c.question, 
+            c.correct 
+        FROM c 
+        where c.course = @class_val
+        and c.module = @module
+        and c.team = @user_name
+    """
+
+    parameters = [
+        {
+            "name" : "@class_val",
+            "value" : class_val.lower()
+        },
+        {
+            "name" : "@module",
+            "value" : str(module).lower()
+        },
+        {
+            "name" : "@user_name",
+            "value" : str(user_name).lower()
+        }
+    ]
+ 
     items = list(container.query_items(
-        query=query,
-        enable_cross_partition_query=True )) 
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True
+        )
+    )
+    print(items)
+
     if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
-    assignment=items[0]['questions']
-    #Query Tableservice to get all attempts to answer questions for this assignment
-    table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-    tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'") 
-    df=pd.DataFrame(tasks)
-    df=df[df['PartitionKey']=="{}".format(exercise.lower())]
+        return f"No assignment found for class {class_val} and module {module}"
+
+    df=pd.DataFrame(items)
+    print(df)
+
+    # rbb we'll check to see if something is returned at all, and if it is, flag
+    # where it has been attempted 
+    attempted = True
+    if not df.empty:
+        df=df[df['PartitionKey']==f"{class_val.lower()}_{module}"]        
+    if df.empty:
+        attempted = False
+
     qnum,anum=0,0
-    for i in range(0,len(assignment)):
-        q_num=assignment[i]['question_num']
-        attempts=len(df[df.question==str(q_num)])
-        correct=len(df[(df.question==str(q_num))&(df.correct==1)])>0
-        assignment[i]['attempts']=attempts
-        assignment[i]['correct']=correct
-        qnum+=1
-        if correct==True:
-            anum+=1
-    df1=pd.DataFrame(assignment)
-    df1.drop('correct_answer',axis=1, inplace=True)
-    df1.sort_values('question_num',inplace=True)
-    df1.reset_index(drop=True,inplace=True)
-    return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], exercise=exercise,qnum=qnum,anum=anum)
+    # rbb i think this should just be changed to enumerate? prevent missing indices
+    assignment = df.groupby('question').agg({'correct' : ['max','count']})
+    print(assignment.reset_index())
+    df1=pd.DataFrame(assignment).reset_index()
+    df1.columns = ["_".join(a) for a in df1.columns.to_flat_index()]
+   # df1.sort_values('question',inplace=True)
+    #df1.reset_index(drop=True,inplace=True)
+
+    # rbb 8/18 do we need to close the connection?
+    return render_template("assignment.html",title='Assignment',user=session["user"],tables=[df1.to_html(classes='data',index=False)], class_val = class_val, module = module,qnum=qnum,anum=anum)
+
 
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
