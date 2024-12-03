@@ -145,7 +145,7 @@ def assignment(class_val, module):
     #Query quizes in cosmosdb to get the structure for this assignment
     class_val = escape(class_val)
     module = escape(module)
-    user_name = escape(user_name)
+    user_name = escape(session['user_name'])
 
     # RBB 11/30 TODO will need to come back and join to questions, make sure to 
     # account for possible questions, not just attempted
@@ -213,7 +213,7 @@ def assignment(class_val, module):
     return render_template(
         "assignment.html",
         title='Assignment',
-        user=session.get("user_name"),
+        user=session.get("user"),
         table=df1,
         class_val=class_val,
         module=module,
