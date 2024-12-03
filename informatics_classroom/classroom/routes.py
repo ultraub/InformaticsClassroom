@@ -138,8 +138,9 @@ def submit_answer():
 def assignment(class_val, module):
     """Assignment home"""
 
-    user_name = ich.check_user_session(session)
-
+    if ich.check_user_session(session) == False:
+        return redirect(url_for("auth_bp.login"))
+    
     container=init_cosmos('answer',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
     class_val = escape(class_val)
@@ -189,7 +190,6 @@ def assignment(class_val, module):
         return f"No assignment found for class {class_val} and module {module}"
 
     df=pd.DataFrame(items)
-    print(df)
 
     # rbb we'll check to see if something is returned at all, and if it is, flag
     # where it has been attempted 
@@ -201,7 +201,6 @@ def assignment(class_val, module):
 
     # rbb i think this should just be changed to enumerate? prevent missing indices
     assignment = df.groupby('question').agg({'correct' : ['max','count']})
-    print(assignment.reset_index())
     df1=pd.DataFrame(assignment).reset_index()
     df1.columns = ["_".join(a) for a in df1.columns.to_flat_index()]
     df1.columns = ['Question Number', 'Correct', 'Attempt Count']
@@ -214,7 +213,7 @@ def assignment(class_val, module):
     return render_template(
         "assignment.html",
         title='Assignment',
-        user=session["user"],
+        user=session.get("user_name"),
         table=df1,
         class_val=class_val,
         module=module,
@@ -225,13 +224,14 @@ def assignment(class_val, module):
 @classroom_bp.route("/exercise_review/<exercise>")
 def exercise_review(exercise):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    
-    user_name = ich.check_user_session(session)
 
     course_name=str(exercise).split('_')[0]   
 
-    if not ich.check_authorized_user(session, course_name):
-        return redirect(url_for("auth_bp.login")) 
+    if ich.check_user_session(session) == False:
+        return redirect(url_for("auth_bp.login"))
+
+    if ich.check_authorized_user(session, course_name) == False:
+        return redirect(url_for("auth_bp.login"))
     # Step 2 get the exercise Structure
      
     # Step 2 get the exercise Structure
@@ -311,7 +311,7 @@ def exercise_review(exercise):
         return render_template(
             "exercise_review.html",
             title='Exercise Review',
-            user=session["user"],
+            user=session.get("user"),
             table_correct=table_correct,
             table_attempts=table_attempts,
             exercise=exercise
@@ -324,27 +324,15 @@ def exercise_review(exercise):
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")
 def exercise_review_open(exercise,questionnum):
     """Exercise Review shows all the students and their progress on an Exercise"""
-    if not session.get("user"):
-        #Test if user session is set
-        return redirect(url_for("auth_bp.login"))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    
-    #Test if user is an authorized user
-    user_name=session['user'].get('preferred_username').split('@')[0]
-    course_name=str(exercise).split('_')[0]   
-    authorized_user=False
-    container=init_cosmos('quiz',DATABASE)
-    items=container.read_item(item="auth_users",partition_key="auth")
-    for name in items['users']:
-        if user_name in name:
-        # Test if user is in list of authorized users
-            if course_name in name[user_name]:
-                authorized_user=True
-    if not authorized_user:
-        return redirect(url_for("auth_bp.login"))      
 
+    course_name=str(exercise).split('_')[0]   
+
+    if not ich.check_user_session(session):
+        redirect(url_for("auth_bp.login"))
+
+    if not ich.check_authorized_user(session, course_name):
+        redirect(url_for("auth_bp.login"))
+    
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
@@ -361,21 +349,15 @@ def exercise_review_open(exercise,questionnum):
     df=pd.DataFrame(tasks)
     # Step 4 construct dataframe to send to html page
     df2=df[df.question==questionnum]
-    return render_template("exercise_review.html",title='Exercise Review',user=session["user"],tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
+    return render_template("exercise_review.html",title='Exercise Review',user=session.get("user_name"),tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
 
 
 @classroom_bp.route("/exercise_form/<exercise>",methods=['GET','POST'])
 def exercise_form(exercise):
     """Exercise Form"""
     #Step 1 get user information
-    if not session.get("user"):
-        #Test if user session is set
-        return redirect(url_for("auth_bp.login"))
-    if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
-        #Test if authenticated user is coming from an authorized domain
-        return redirect(url_for("auth_bp.login"))
-    user_name=session['user'].get('preferred_username').split('@')[0]
-    course_name=str(exercise).split('_')[0]
+    ich.check_user_session(session)
+
     # Step 2 get the exercise Structure
     container=init_cosmos('quiz',DATABASE)
     #Query quizes in cosmosdb to get the structure for this assignment
