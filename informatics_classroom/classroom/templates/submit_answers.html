@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Submit Answers{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Submit Answers</h2>
+    <form id="token-form" class="mb-4">
+        <div class="form-group">
+            <label for="token" class="form-label">Enter Token</label>
+            <input type="text" id="token" name="token" class="form-control" required>
+        </div>
+        <button type="button" id="load-quiz-btn" class="btn btn-secondary">Load Quiz</button>
+    </form>
+
+    <form id="submit-answers-form" class="d-none">
+        <div id="questions-container" class="mb-4">
+            <!-- Questions will be dynamically loaded here -->
+        </div>
+        <input type="hidden" id="submit-token" name="token">
+        <button type="submit" class="btn btn-primary">Submit Answers</button>
+    </form>
+
+    <div id="summary-container" class="mt-4">
+        <!-- Overall feedback will be displayed here -->
+    </div>
+</div>
+
+<script>
+    document.getElementById("load-quiz-btn").addEventListener("click", function () {
+        const token = document.getElementById("token").value;
+
+        if (!token) {
+            alert("Token is required to load the quiz.");
+            return;
+        }
+
+        fetch(`/api/get-quiz?token=${token}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                } else {
+                    const questionsContainer = document.getElementById("questions-container");
+                    questionsContainer.innerHTML = "";
+                    data.questions.forEach(question => {
+                        const questionDiv = document.createElement("div");
+                        questionDiv.className = "question mb-3";
+                        questionDiv.innerHTML = `
+                            <label for="question_${question.question_num}" class="form-label">
+                                Question ${question.question_num}
+                            </label>
+                            <input type="text" class="form-control answer-input" id="question_${question.question_num}" 
+                                   name="answers[${question.question_num}]" required>
+                            <small class="feedback text-muted" id="feedback_${question.question_num}"></small>
+                        `;
+                        questionsContainer.appendChild(questionDiv);
+                    });
+                    document.getElementById("submit-token").value = token; // Set hidden token input
+                    document.getElementById("submit-answers-form").classList.remove("d-none");
+                }
+            })
+            .catch(error => {
+                alert("Error loading quiz: " + error);
+            });
+    });
+
+    document.getElementById("submit-answers-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const formData = new FormData(this);
+        const answers = {};
+
+        // Process form data into the `answers` object
+        formData.forEach((value, key) => {
+            if (key.startsWith("answers[")) {
+                const match = key.match(/answers\[(\d+)\]/); // Fix regex to handle valid patterns
+                if (match) {
+                    const questionNum = match[1];
+                    answers[questionNum] = value.trim(); // Trim whitespace for consistency
+                }
+            }
+        });
+
+        const token = formData.get("token");
+
+        if (!token || Object.keys(answers).length === 0) {
+            alert("Ensure all answers are filled and a token is provided.");
+            return;
+        }
+
+        const payload = {
+            token: token,
+            answers: answers
+        };
+
+        fetch("/api/submit-answers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        })
+            .then(response => response.json())
+            .then(data => {
+                for (const [questionNum, feedback] of Object.entries(data.feedback)) {
+                    const feedbackElement = document.getElementById(`feedback_${questionNum}`);
+                    const inputElement = document.getElementById(`question_${questionNum}`);
+                    if (feedback.correct) {
+                        inputElement.classList.add("is-valid");
+                        inputElement.classList.remove("is-invalid");
+                        feedbackElement.className = "feedback text-success";
+                        feedbackElement.textContent = "Correct!";
+                    } else {
+                        inputElement.classList.add("is-invalid");
+                        inputElement.classList.remove("is-valid");
+                        feedbackElement.className = "feedback text-danger";
+                        feedbackElement.textContent = `Incorrect.`;
+                    }
+                }
+
+                // Display overall summary
+                const summaryContainer = document.getElementById("summary-container");
+                summaryContainer.textContent = data.message;
+                summaryContainer.className = "alert alert-info";
+            })
+            .catch(error => {
+                alert("Error submitting answers: " + error);
+            });
+    });
+</script>
+{% endblock %}

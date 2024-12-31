@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Create Quiz{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Create a New Quiz</h2>
+    <form id="create-quiz-form" method="POST">
+        <div class="mb-3">
+            <label for="quiz_title" class="form-label">Quiz Title</label>
+            <input type="text" id="quiz_title" name="quiz_title" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea id="description" name="description" class="form-control" rows="3" required></textarea>
+        </div>
+        <div id="questions-container" class="mb-3">
+            <h4>Questions</h4>
+            <button type="button" id="add-question-btn" class="btn btn-secondary mb-3">Add Question</button>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Quiz</button>
+    </form>
+</div>
+
+<script>
+    const questionsContainer = document.getElementById("questions-container");
+    const addQuestionBtn = document.getElementById("add-question-btn");
+    let questionCount = 0;
+
+    addQuestionBtn.addEventListener("click", () => {
+        questionCount++;
+        const questionDiv = document.createElement("div");
+        questionDiv.className = "question mb-3";
+        questionDiv.innerHTML = `
+            <label for="question_${questionCount}" class="form-label">Question ${questionCount}</label>
+            <textarea id="question_${questionCount}" name="questions[${questionCount}][text]" class="form-control" rows="2" required></textarea>
+            <label for="answer_${questionCount}" class="form-label">Correct Answer</label>
+            <input type="text" id="answer_${questionCount}" name="questions[${questionCount}][correct_answer]" class="form-control" required>
+        `;
+        questionsContainer.appendChild(questionDiv);
+    });
+
+    document.getElementById("create-quiz-form").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        const jsonData = Object.fromEntries(formData.entries());
+
+        fetch("/api/create-quiz", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(jsonData)
+        })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => alert("Error: Could not create quiz."));
+    });
+</script>
+{% endblock %}

@@ -21,6 +21,420 @@ DATABASE = Config.DATABASE
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
+def load_data_from_cosmos(container_name, query, parameters):
+    """Load data from Cosmos DB using query and parameters."""
+    container = init_cosmos(container_name, DATABASE)
+    return list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+# --- HTML-SERVING ROUTES ---
+@classroom_bp.route("/generate-token", methods=["GET"])
+def generate_token_page():
+    """Render the token generation page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+
+    user_id = session['user'].get('preferred_username')
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [{"name": "@user_id", "value": user_id}]
+    users = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not users:
+        return redirect(url_for("auth_bp.login"))
+
+    accessible_classes = users[0].get("accessible_classes", [])
+
+    # Fetch available modules for accessible classes
+    quizzes_container = init_cosmos('quiz', DATABASE)
+    modules_query = "SELECT DISTINCT c.class, c.module FROM c WHERE ARRAY_CONTAINS(@classes, c.class)"
+    modules_parameters = [{"name": "@classes", "value": accessible_classes}]
+    modules = list(quizzes_container.query_items(query=modules_query, parameters=modules_parameters, enable_cross_partition_query=True))
+
+    # Organize modules by class
+    class_modules = {}
+    for item in modules:
+        if item['class'] not in class_modules:
+            class_modules[item['class']] = []
+        class_modules[item['class']].append(item['module'])
+
+    return render_template(
+        "token_generation.html",
+        title="Generate Token",
+        user=session.get("user"),
+        classes=accessible_classes,
+        class_modules=json.dumps(class_modules)  # Serialize class_modules as JSON
+    )
+
+
+def has_class_access(user_id, class_val):
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [{"name": "@user_id", "value": user_id}]
+    users = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not users:
+        return False
+
+    user = users[0]
+    return class_val in user.get('accessible_classes', [])
+
+@classroom_bp.route("/create-quiz", methods=["GET"])
+def create_quiz_page():
+    """Render the create quiz page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+    return render_template("create_quiz.html", title="Create Quiz")
+
+@classroom_bp.route("/modify-quiz", methods=["GET"])
+def modify_quiz_page():
+    """Render the modify quiz page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+    return render_template("modify_quiz.html", title="Modify Quiz")
+
+@classroom_bp.route("/submit-answers", methods=["GET"])
+def submit_answers_page():
+    """Render the submit answers page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+    return render_template("submit_answers.html", title="Submit Answers")
+
+@classroom_bp.route("/manage-users", methods=["GET"])
+def manage_users_page():
+    """Render the manage users page."""
+    if not ich.check_user_session(session) or not is_admin(session['user']):
+        return redirect(url_for("auth_bp.login"))
+    return render_template("manage_users.html", title="Manage Users")
+# --- API ROUTES ---
+
+@classroom_bp.route("/api/grant-class-permission", methods=["POST"])
+def grant_class_permission():
+    """Grant class access to a user."""
+    if not session.get("user") or not is_admin(session['user']):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.json
+    user_id = data.get('user_id')
+    class_val = data.get('class_val')
+
+    if not user_id or not class_val:
+        return jsonify({"message": "Missing fields"}), 400
+
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [{"name": "@user_id", "value": user_id}]
+    users = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not users:
+        return jsonify({"message": "User not found"}), 404
+
+    user = users[0]
+    if 'accessible_classes' not in user:
+        user['accessible_classes'] = []
+
+    if class_val not in user['accessible_classes']:
+        user['accessible_classes'].append(class_val)
+
+    container.upsert_item(user)
+    return jsonify({"message": "Class permission granted successfully"}), 200
+
+@classroom_bp.route("/api/get-quiz", methods=["GET"])
+def get_quiz_details():
+    """Retrieve quiz details using a token."""
+    token = request.args.get("token")
+    if not token:
+        return jsonify({"message": "Token is required"}), 400
+
+    # Validate the token
+    container = init_cosmos("tokens", DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @token"
+    parameters = [{"name": "@token", "value": token}]
+    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not result:
+        return jsonify({"message": "Invalid token"}), 404
+
+    token_data = result[0]
+    if dt.datetime.utcnow() > dt.datetime.fromisoformat(token_data["expiry"]):
+        return jsonify({"message": "Token has expired"}), 403
+
+    class_val = token_data["class_val"]
+    module_val = token_data.get("module_val")
+
+    # Fetch quiz questions
+    container = init_cosmos("quiz", DATABASE)
+    query = "SELECT * FROM c WHERE c.class = @class_val AND c.module = @module_val"
+    parameters = [
+        {"name": "@class_val", "value": class_val},
+        {"name": "@module_val", "value": int(module_val)}
+    ]
+    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not result:
+        return jsonify({"message": "Quiz not found"}), 404
+
+    quiz = result[0]
+    return jsonify({"questions": quiz.get("questions", [])}), 200
+
+
+
+@classroom_bp.route("/api/generate-token", methods=["POST"])
+def generate_token():
+    """Generate a token for a class and module."""
+    if not session.get("user"):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    user_name = session['user'].get('preferred_username').split('@')[0]
+    class_val = request.json.get('class_val')
+    module_val = request.json.get('module_val')
+
+    if not class_val or not module_val:
+        return jsonify({"message": "Both class_val and module_val are required"}), 400
+
+    if not has_class_access(user_name, class_val):
+        return jsonify({"message": "You do not have access to this class"}), 403
+
+    token = str(uuid.uuid4())
+    expiry_time = dt.datetime.utcnow() + dt.timedelta(hours=24)
+
+    token_entry = {
+        'id': token,
+        'user': user_name,
+        'class_val': class_val,
+        'module_val': module_val,
+        'expiry': expiry_time.isoformat()
+    }
+
+    container = init_cosmos('tokens', DATABASE)
+    container.upsert_item(token_entry)
+
+    return jsonify({"token": token, "expiry": expiry_time.isoformat()}), 201
+
+
+
+@classroom_bp.route("/api/create-quiz", methods=["POST"])
+def create_quiz():
+    """Create a new quiz."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    quiz_title = request.json.get('quiz_title')
+    description = request.json.get('description')
+    questions = request.json.get('questions', [])
+    created_by = session['user'].get('preferred_username')
+
+    if not quiz_title or not description or not questions:
+        return jsonify({"message": "Invalid input"}), 400
+
+    container = init_cosmos('quizzes', DATABASE)
+    quiz = {
+        'id': f"{quiz_title.lower().replace(' ', '_')}",
+        'title': quiz_title,
+        'description': description,
+        'questions': questions,
+        'owner': created_by,
+        'created_at': dt.datetime.utcnow().isoformat(),
+        'updated_at': dt.datetime.utcnow().isoformat()
+    }
+    container.upsert_item(quiz)
+    return jsonify({"message": "Quiz created successfully", "quiz_id": quiz['id']}), 201
+
+@classroom_bp.route("/api/manage-user", methods=["POST"])
+def manage_user():
+    """Manage user roles and permissions."""
+    if not session.get("user"):
+    #or not is_admin(session["user"]):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.json
+    user_id = data.get("user_id")
+    role = data.get("role")
+    class_val = data.get("class_val")
+
+    if not user_id or not role:
+        return jsonify({"message": "User ID and role are required"}), 400
+
+    container = init_cosmos("users", DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [{"name": "@user_id", "value": user_id}]
+    users = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    user = users[0] if users else {"id": user_id, "accessible_classes": []}
+    user["role"] = role
+
+    if class_val and class_val not in user["accessible_classes"]:
+        user["accessible_classes"].append(class_val)
+
+    container.upsert_item(user)
+    return jsonify({"message": f"User {user_id} updated successfully"}), 200
+
+@classroom_bp.route("/api/modify-quiz", methods=["POST"])
+def modify_quiz():
+    """Modify an existing quiz."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    quiz_id = request.json.get('quiz_id')
+    questions = request.json.get('questions', [])
+    updated_by = session['user'].get('preferred_username')
+
+    if not quiz_id or not questions:
+        return jsonify({"message": "Invalid input"}), 400
+
+    container = init_cosmos('quizzes', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @quiz_id"
+    parameters = [{"name": "@quiz_id", "value": quiz_id}]
+    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not result:
+        return jsonify({"message": "Quiz not found"}), 404
+
+    quiz = result[0]
+    quiz['questions'] = questions
+    quiz['updated_at'] = dt.datetime.utcnow().isoformat()
+    quiz['updated_by'] = updated_by
+    container.upsert_item(quiz)
+
+    return jsonify({"message": "Quiz modified successfully"}), 200
+# Optional: Add a cleanup utility to remove expired tokens periodically
+@classroom_bp.route("/cleanup-tokens", methods=["POST"])
+def cleanup_tokens():
+    container = init_cosmos('tokens', DATABASE)
+    query = "SELECT * FROM c"
+
+    tokens = list(container.query_items(
+        query=query,
+        enable_cross_partition_query=True
+    ))
+
+    current_time = dt.datetime.utcnow()
+    for token in tokens:
+        if dt.datetime.fromisoformat(token['expiry']) < current_time:
+            container.delete_item(item=token['id'], partition_key=token['id'])
+
+    return jsonify({"message": "Expired tokens cleaned up."}), 200
+
+# User Role Management
+@classroom_bp.route("/assign-role", methods=["POST"])
+def assign_role():
+    if not session.get("user") or not is_admin(session['user']):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.json
+    user_id = data.get('user_id')
+    role = data.get('role')
+    full_name = data.get('full_name')
+    email = data.get('email')
+    additional_info = data.get('additional_info', {})
+
+    if not user_id or role not in ['Admin', 'Instructor', 'Student'] or not full_name or not email:
+        return jsonify({"message": "Invalid input"}), 400
+
+    container = init_cosmos('users', DATABASE)
+    user = {
+        'id': user_id,
+        'role': role,
+        'full_name': full_name,
+        'email': email,
+        'additional_info': additional_info,
+        'created_at': datetime.utcnow().isoformat()
+    }
+    container.upsert_item(user)
+
+    return jsonify({"message": f"Role {role} assigned to {user_id}"}), 200
+
+# Check user role
+@classroom_bp.route("/check-role", methods=["GET"])
+def check_role():
+    user_id = session.get("user").get('preferred_username')
+
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [
+        {"name": "@user_id", "value": user_id}
+    ]
+
+    result = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True
+    ))
+
+    if not result:
+        return jsonify({"message": "User role not found"}), 404
+
+    return jsonify(result[0]), 200
+
+# Permissions Middleware
+def is_admin(user):
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [
+        {"name": "@user_id", "value": user.get('preferred_username')}
+    ]
+    result = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True
+    ))
+    if result and result[0]['role'] == 'Admin':
+        return True
+    return False
+
+def is_instructor(user):
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [
+        {"name": "@user_id", "value": user.get('preferred_username')}
+    ]
+    result = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True
+    ))
+    if result and result[0]['role'] == 'Instructor':
+        return True
+    return False
+
+def is_student(user):
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [
+        {"name": "@user_id", "value": user.get('preferred_username')}
+    ]
+    result = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True
+    ))
+    if result and result[0]['role'] == 'Student':
+        return True
+    return False
+
+@classroom_bp.route("/view-quizzes", methods=["GET"])
+def view_quizzes():
+    if not session.get("user"):
+    # or not is_student(session['user']):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    # Logic to fetch quizzes accessible to the student
+    container = init_cosmos('users', DATABASE)
+    query = "SELECT c.accessible_classes FROM c WHERE c.userId = @user_id"
+    parameters = [
+        {
+            "name": "@user_id", 
+            "value": session['user'].get('preferred_username')
+        }
+    ]
+    quizzes = list(container.query_items(
+        query=query,
+        parameters=parameters,
+        enable_cross_partition_query=True
+    ))
+    print(json.dumps(quizzes))
+
+    return jsonify({"quizzes": quizzes[0]['accessible_classes']}), 200
+
 @classroom_bp.route('/home')
 def landingpage():
     return render_template('home.html',title='Home')
@@ -29,110 +443,113 @@ def landingpage():
 def quiz():
     return render_template('quiz.html')
 
-@classroom_bp.route("/submit-answer",methods=['GET','POST'])
-def submit_answer():
-    # rbb 8/18 i think this needs to be a different route, this should always be post
-    if request.method=='GET':
-        form=AnswerForm()
-        return render_template('answerform.html',title='AnswerForm',form=form)
-    
-    sub_fields=['module', 'team', 'question_num', 'answer_num']
-    for field in sub_fields:
-        if field not in request.form.keys():
-            return jsonify({"message":f"Bad request, missing field {field}"}),400
-    # Get the answer key
-    if 'class' in request.form.keys():
-        #removing use of class as a variable name
-        partition_key=request.form['class']
-    else:
-        partition_key=request.form['class_name']
+def process_answer(token, team, question_num, answer_num):
+    """Validate and store a single answer."""
+    # Validate token
+    container = init_cosmos('tokens', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @token"
+    parameters = [{"name": "@token", "value": token}]
+    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
-    module_num=request.form['module']
-    module_name=partition_key+"_"+ module_num
-    
-    question_num=int(request.form['question_num'])
-    answer_num=request.form['answer_num']
+    if not result or not isinstance(result[0], dict):
+        return {"message": "Invalid token", "status": 404}
 
-    # rbb 09/03
+    token_data = result[0]
+    class_val = token_data.get("class_val")
+    module_val = token_data.get("module_val")
 
-    container=init_cosmos('quiz',DATABASE)
+    if not class_val or module_val is None:
+        return {"message": "Invalid class or module in token", "status": 400}
 
+    # Fetch correct answer
+    container = init_cosmos('quiz', DATABASE)
     query = """
-        SELECT
-            c.question_num,
-            c.correct_answer,
-            c.endpoint,
-            c.query,
-            c.open
-        FROM quiz q
-        join c in q.questions
-        where q.class = @class_val
-            and q.module = @module_val
-            and c.question_num = @q_num
+        SELECT c.correct_answer FROM quiz q
+        JOIN c IN q.questions
+        WHERE q.class = @class_val AND q.module = @module_val AND c.question_num = @question_num
     """
-
     parameters = [
-        {
-            "name" : "@class_val",
-            "value" : partition_key.lower()
-        },
-        {
-            "name" : "@module_val",
-            "value" : int(module_num)
-        },
-        {
-            "name" : "@q_num",
-            "value" : int(question_num)
-        },
+        {"name": "@class_val", "value": class_val},
+        {"name": "@module_val", "value": int(module_val)},
+        {"name": "@question_num", "value": int(question_num)},
     ]
+    question = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
-    question = list(container.query_items(
-            query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
-        )
-    )
+    if not question or not isinstance(question[0], dict):
+        return {"message": "Invalid question number", "status": 400}
 
-    if len(question) != 1:
-        return jsonify({"Something went wrong"}),400
-    else:
-        question = question[0]
-    
-    # need to quit here if answer key doesn't exist
+    correct_answer = question[0].get("correct_answer")
+    is_correct = str(correct_answer) == str(answer_num)
 
+    # Log attempt
     attempt = {
-        'PartitionKey':module_name,
+        'PartitionKey': f"{class_val}_{module_val}",
         'id': str(uuid.uuid4()),
-        'course':partition_key,
-        'module': module_num,
-        # rbb 8/18 should this be user name?
-        'team': request.form['team'],
+        'course': class_val,
+        'module': module_val,
+        'team': team,
         'question': question_num,
-        'answer':str(answer_num),
-        'datetime': str(dt.datetime.now())
+        'answer': answer_num,
+        'datetime': str(dt.datetime.utcnow()),
+        'correct': int(is_correct),
     }
+    answer_container = init_cosmos('answer', DATABASE)
+    answer_container.upsert_item(attempt)
 
-    container=init_cosmos('answer',DATABASE)
+    return {"question_num": question_num, "correct": is_correct, "status": 200}
 
-    if ('open' in question.keys()) and (question['open'] == 'True') and answer_num:
-        #Log success for team
-        nextquestion=''
-        attempt['correct']=1
-        container.upsert_item(attempt)
-        return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
-    
-    elif (str(question['correct_answer'])==str(answer_num)):       
-        #Log success for team
-        nextquestion=''
-        attempt['correct']=1
-        container.upsert_item(attempt)
-        return jsonify({"Message":"Great job! You got it right.","Next Question":nextquestion}),200
-    
-    else:
-        #Log failure for team
-        attempt['correct']=0
-        container.upsert_item(attempt)
-        return jsonify({"message":"Sorry, wrong answer"}),406 
+@classroom_bp.route("/submit-answer", methods=['POST'])
+def submit_answer():
+    """Handle submission of a single answer."""
+    token = request.form.get("token")
+    team = request.form.get("team")
+    question_num = request.form.get("question_num")
+    answer_num = request.form.get("answer_num")
+
+    if not all([token, team, question_num, answer_num]):
+        return jsonify({"message": "Missing required fields"}), 400
+
+    result = process_answer(token, team, question_num, answer_num)
+    return jsonify({"message": result.get("message", "Success"), "correct": result["correct"]}), result["status"]
+
+
+@classroom_bp.route("/api/submit-answers", methods=["POST"])
+def submit_answers():
+    """Submit multiple answers for a quiz."""
+    data = request.json
+
+    # Log incoming payload for debugging
+    print("Received payload:", data)
+
+    token = data.get("token")
+    team = session['user'].get('preferred_username')
+    answers = data.get("answers", {})
+
+    # Ensure required fields are present
+    if not token or not team:
+        return jsonify({"message": "Token and team are required"}), 400
+
+    if not answers:
+        return jsonify({"message": "No answers provided"}), 400
+
+    feedback = {}
+    for question_num, answer_num in answers.items():
+        result = process_answer(token, team, question_num, answer_num)
+        feedback[question_num] = {
+            "correct": result["correct"],
+            "status": result["status"],
+            "message": result.get("message", "Processed successfully")
+        }
+
+    correct_count = sum(1 for response in feedback.values() if response["correct"])
+    total_questions = len(answers)
+
+    return jsonify({
+        "message": f"Submission complete. Score: {correct_count}/{total_questions}",
+        "feedback": feedback,
+    }), 200
+
+
 
 @classroom_bp.route("/assignment/<class_val>/<module>")
 def assignment(class_val, module):
@@ -317,10 +734,6 @@ def exercise_review(exercise):
             exercise=exercise
         )
 
-
-
-
-
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")
 def exercise_review_open(exercise,questionnum):
     """Exercise Review shows all the students and their progress on an Exercise"""
@@ -350,7 +763,6 @@ def exercise_review_open(exercise,questionnum):
     # Step 4 construct dataframe to send to html page
     df2=df[df.question==questionnum]
     return render_template("exercise_review.html",title='Exercise Review',user=session.get("user_name"),tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
-
 
 @classroom_bp.route("/exercise_form/<exercise>",methods=['GET','POST'])
 def exercise_form(exercise):
@@ -409,7 +821,6 @@ def student_center():
                     items[i]['questions'][j]['correct']=True       
     return render_template("studentcenter.html",title='Student Center',form=ClassForm(),user=session["user"],items=items)
 
-   
 # rbb 8/18 need a route to update questions
 @classroom_bp.route("/update_question",methods=['POST'])
 def update_question():

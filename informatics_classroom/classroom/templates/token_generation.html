@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Generate Token{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Generate Access Token</h2>
+    <form id="token-form" method="POST">
+        <div class="mb-3">
+            <label for="class_val" class="form-label">Class</label>
+            <select id="class_val" name="class_val" class="form-control" required>
+                <option value="" selected disabled>Select a class</option>
+                {% for class_name in classes %}
+                <option value="{{ class_name }}">{{ class_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="module_val" class="form-label">Module</label>
+            <select id="module_val" name="module_val" class="form-control" required>
+                <option value="" selected disabled>Select a module</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Token</button>
+    </form>
+    <div id="token-output" class="mt-3"></div>
+</div>
+
+<script>
+    const classModules = JSON.parse('{{ class_modules|safe }}');
+
+    document.getElementById('class_val').addEventListener('change', function () {
+        const classVal = this.value;
+        const moduleSelect = document.getElementById('module_val');
+        moduleSelect.innerHTML = '<option value="" selected disabled>Select a module</option>';
+
+        if (classModules[classVal]) {
+            classModules[classVal].forEach(module => {
+                const option = document.createElement('option');
+                option.value = module;
+                option.textContent = module;
+                moduleSelect.appendChild(option);
+            });
+        }
+    });
+
+    document.getElementById('token-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const formData = new FormData(this);
+        fetch('/api/generate-token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(Object.fromEntries(formData.entries()))
+        })
+        .then(response => response.json())
+        .then(data => {
+            const output = document.getElementById('token-output');
+            if (data.token) {
+                output.textContent = `Token: ${data.token} (expires at ${data.expiry})`;
+            } else {
+                output.textContent = `Error: ${data.message}`;
+            }
+        })
+        .catch(error => {
+            document.getElementById('token-output').textContent = 'Error generating token.';
+        });
+    });
+</script>
+{% endblock %}
