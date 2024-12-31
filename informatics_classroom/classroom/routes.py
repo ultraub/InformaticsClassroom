@@ -108,6 +108,42 @@ def manage_users_page():
     return render_template("manage_users.html", title="Manage Users")
 # --- API ROUTES ---
 
+@classroom_bp.route("/api/view-quizzes", methods=["GET"])
+def view_quizzes():
+    """Retrieve quizzes the user has access to."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    user_id = session['user'].get('preferred_username')
+    container = init_cosmos('quiz', DATABASE)
+
+    # Combine conditions to filter quizzes by ownership or class access
+    query = """
+        SELECT * FROM c
+        WHERE c.owner = @user_id
+        OR ARRAY_CONTAINS(@accessible_classes, c.class)
+    """
+    # Fetch the accessible classes from user data
+    user_container = init_cosmos('users', DATABASE)
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
+
+    if not user_result:
+        return jsonify({"message": "No accessible classes found."}), 404
+
+    accessible_classes = user_result[0].get("accessible_classes", [])
+    parameters = [
+        {"name": "@user_id", "value": user_id},
+        {"name": "@accessible_classes", "value": accessible_classes},
+    ]
+
+    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    return jsonify({"quizzes": quizzes}), 200
+
+
 @classroom_bp.route("/api/grant-class-permission", methods=["POST"])
 def grant_class_permission():
     """Grant class access to a user."""
@@ -177,6 +213,23 @@ def get_quiz_details():
     quiz = result[0]
     return jsonify({"questions": quiz.get("questions", [])}), 200
 
+@classroom_bp.route("/api/get-quiz-content", methods=["GET"])
+def get_quiz_content():
+    """Retrieve questions for a specific quiz."""
+    quiz_id = request.args.get("quiz_id")
+    if not quiz_id:
+        return jsonify({"message": "Quiz ID is required"}), 400
+
+    container = init_cosmos('quiz', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @quiz_id"
+    parameters = [{"name": "@quiz_id", "value": quiz_id}]
+    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not quizzes:
+        return jsonify({"message": "Quiz not found"}), 404
+
+    quiz = quizzes[0]
+    return jsonify({"questions": quiz.get("questions", [])}), 200
 
 
 @classroom_bp.route("/api/generate-token", methods=["POST"])
@@ -271,32 +324,54 @@ def manage_user():
 
 @classroom_bp.route("/api/modify-quiz", methods=["POST"])
 def modify_quiz():
-    """Modify an existing quiz."""
+    """Update a specific question's correct answer with logging details."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
-    quiz_id = request.json.get('quiz_id')
-    questions = request.json.get('questions', [])
+    data = request.json
+    quiz_id = data.get("quiz_id")
+    question_num = data.get("question_num")
+    correct_answer = data.get("correct_answer")
+
+    if not quiz_id or not question_num or correct_answer is None:
+        return jsonify({"message": "Missing required fields"}), 400
+
     updated_by = session['user'].get('preferred_username')
+    update_datetime = str(dt.datetime.utcnow())
 
-    if not quiz_id or not questions:
-        return jsonify({"message": "Invalid input"}), 400
-
-    container = init_cosmos('quizzes', DATABASE)
+    container = init_cosmos('quiz', DATABASE)
     query = "SELECT * FROM c WHERE c.id = @quiz_id"
     parameters = [{"name": "@quiz_id", "value": quiz_id}]
-    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
-    if not result:
+    if not quizzes:
         return jsonify({"message": "Quiz not found"}), 404
 
-    quiz = result[0]
-    quiz['questions'] = questions
-    quiz['updated_at'] = dt.datetime.utcnow().isoformat()
-    quiz['updated_by'] = updated_by
+    quiz = quizzes[0]
+    question_found = False
+
+    # Update the question
+    for question in quiz.get("questions", []):
+        if str(question["question_num"]) == str(question_num):
+            question["correct_answer"] = correct_answer
+            question["updated_by"] = updated_by
+            question["update_datetime"] = update_datetime
+            question_found = True
+            break
+
+    if not question_found:
+        return jsonify({"message": "Question not found in the quiz"}), 404
+
+    # Upsert the updated quiz
     container.upsert_item(quiz)
 
-    return jsonify({"message": "Quiz modified successfully"}), 200
+    return jsonify({
+        "success": True,
+        "message": "Question updated successfully",
+        "updated_by": updated_by,
+        "update_datetime": update_datetime
+    }), 200
+
 # Optional: Add a cleanup utility to remove expired tokens periodically
 @classroom_bp.route("/cleanup-tokens", methods=["POST"])
 def cleanup_tokens():
@@ -411,30 +486,6 @@ def is_student(user):
     if result and result[0]['role'] == 'Student':
         return True
     return False
-
-@classroom_bp.route("/view-quizzes", methods=["GET"])
-def view_quizzes():
-    if not session.get("user"):
-    # or not is_student(session['user']):
-        return jsonify({"message": "Unauthorized"}), 401
-
-    # Logic to fetch quizzes accessible to the student
-    container = init_cosmos('users', DATABASE)
-    query = "SELECT c.accessible_classes FROM c WHERE c.userId = @user_id"
-    parameters = [
-        {
-            "name": "@user_id", 
-            "value": session['user'].get('preferred_username')
-        }
-    ]
-    quizzes = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True
-    ))
-    print(json.dumps(quizzes))
-
-    return jsonify({"quizzes": quizzes[0]['accessible_classes']}), 200
 
 @classroom_bp.route('/home')
 def landingpage():
