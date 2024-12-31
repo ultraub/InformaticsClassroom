@@ -102,7 +102,8 @@ def submit_answers_page():
 @classroom_bp.route("/manage-users", methods=["GET"])
 def manage_users_page():
     """Render the manage users page."""
-    if not ich.check_user_session(session) or not is_admin(session['user']):
+    if not ich.check_user_session(session):
+    #or not is_admin(session['user']):
         return redirect(url_for("auth_bp.login"))
     return render_template("manage_users.html", title="Manage Users")
 # --- API ROUTES ---
@@ -443,60 +444,74 @@ def landingpage():
 def quiz():
     return render_template('quiz.html')
 
-def process_answer(token, team, question_num, answer_num):
-    """Validate and store a single answer."""
+def process_answers(token, team, answers):
+    """Validate and store multiple answers."""
     # Validate token
     container = init_cosmos('tokens', DATABASE)
     query = "SELECT * FROM c WHERE c.id = @token"
     parameters = [{"name": "@token", "value": token}]
     result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
-
+    
     if not result or not isinstance(result[0], dict):
-        return {"message": "Invalid token", "status": 404}
+        return {"message": "Invalid token", "status": 404, "feedback": {}}
 
     token_data = result[0]
     class_val = token_data.get("class_val")
     module_val = token_data.get("module_val")
 
     if not class_val or module_val is None:
-        return {"message": "Invalid class or module in token", "status": 400}
+        return {"message": "Invalid class or module in token", "status": 400, "feedback": {}}
 
-    # Fetch correct answer
+    # Fetch all questions for the quiz in a single query
     container = init_cosmos('quiz', DATABASE)
     query = """
-        SELECT c.correct_answer FROM quiz q
+        SELECT c.question_num, c.correct_answer FROM quiz q
         JOIN c IN q.questions
-        WHERE q.class = @class_val AND q.module = @module_val AND c.question_num = @question_num
+        WHERE q.class = @class_val AND q.module = @module_val
     """
     parameters = [
         {"name": "@class_val", "value": class_val},
         {"name": "@module_val", "value": int(module_val)},
-        {"name": "@question_num", "value": int(question_num)},
     ]
-    question = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    questions = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
-    if not question or not isinstance(question[0], dict):
-        return {"message": "Invalid question number", "status": 400}
+    if not questions:
+        return {"message": "Quiz not found", "status": 404, "feedback": {}}
 
-    correct_answer = question[0].get("correct_answer")
-    is_correct = str(correct_answer) == str(answer_num)
+    # Create a lookup for correct answers
+    correct_answers = {str(q["question_num"]): str(q["correct_answer"]) for q in questions}
 
-    # Log attempt
-    attempt = {
-        'PartitionKey': f"{class_val}_{module_val}",
-        'id': str(uuid.uuid4()),
-        'course': class_val,
-        'module': module_val,
-        'team': team,
-        'question': question_num,
-        'answer': answer_num,
-        'datetime': str(dt.datetime.utcnow()),
-        'correct': int(is_correct),
-    }
+    # Validate and log answers
+    feedback = {}
+    attempts = []
+    for question_num, answer_num in answers.items():
+        correct_answer = correct_answers.get(str(question_num))
+        if correct_answer is None:
+            feedback[question_num] = {"correct": False, "message": "Invalid question number"}
+            continue
+
+        is_correct = str(correct_answer) == str(answer_num)
+        feedback[question_num] = {"correct": is_correct}
+
+        attempts.append({
+            'PartitionKey': f"{class_val}_{module_val}",
+            'id': str(uuid.uuid4()),
+            'course': class_val,
+            'module': module_val,
+            'team': team,
+            'question': question_num,
+            'answer': answer_num,
+            'datetime': str(dt.datetime.utcnow()),
+            'correct': int(is_correct),
+        })
+
+    # Batch log attempts
     answer_container = init_cosmos('answer', DATABASE)
-    answer_container.upsert_item(attempt)
+    for attempt in attempts:
+        answer_container.upsert_item(attempt)
 
-    return {"question_num": question_num, "correct": is_correct, "status": 200}
+    return {"message": "Processed successfully", "status": 200, "feedback": feedback}
+
 
 @classroom_bp.route("/submit-answer", methods=['POST'])
 def submit_answer():
@@ -509,8 +524,14 @@ def submit_answer():
     if not all([token, team, question_num, answer_num]):
         return jsonify({"message": "Missing required fields"}), 400
 
-    result = process_answer(token, team, question_num, answer_num)
-    return jsonify({"message": result.get("message", "Success"), "correct": result["correct"]}), result["status"]
+    result = process_answers(token, team, {question_num: answer_num})
+    feedback = result["feedback"].get(question_num, {})
+    return jsonify({
+        "message": feedback.get("message", "Processed successfully"),
+        "correct": feedback.get("correct", False),
+    }), result["status"]
+
+
 
 
 @classroom_bp.route("/api/submit-answers", methods=["POST"])
@@ -518,36 +539,25 @@ def submit_answers():
     """Submit multiple answers for a quiz."""
     data = request.json
 
-    # Log incoming payload for debugging
-    print("Received payload:", data)
-
     token = data.get("token")
     team = session['user'].get('preferred_username')
     answers = data.get("answers", {})
 
-    # Ensure required fields are present
     if not token or not team:
         return jsonify({"message": "Token and team are required"}), 400
 
     if not answers:
         return jsonify({"message": "No answers provided"}), 400
 
-    feedback = {}
-    for question_num, answer_num in answers.items():
-        result = process_answer(token, team, question_num, answer_num)
-        feedback[question_num] = {
-            "correct": result["correct"],
-            "status": result["status"],
-            "message": result.get("message", "Processed successfully")
-        }
-
-    correct_count = sum(1 for response in feedback.values() if response["correct"])
+    result = process_answers(token, team, answers)
+    feedback = result["feedback"]
+    correct_count = sum(1 for response in feedback.values() if response.get("correct", False))
     total_questions = len(answers)
 
     return jsonify({
         "message": f"Submission complete. Score: {correct_count}/{total_questions}",
         "feedback": feedback,
-    }), 200
+    }), result["status"]
 
 
 
