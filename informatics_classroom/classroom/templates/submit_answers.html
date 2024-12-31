@@ -11,14 +11,9 @@
         <button type="button" id="load-quiz-btn" class="btn btn-secondary">Load Quiz</button>
     </form>
 
-    <form id="submit-answers-form" class="d-none">
-        <div id="questions-container" class="mb-4">
-            <!-- Questions will be dynamically loaded here -->
-        </div>
-        <input type="hidden" id="submit-token" name="token">
-        <button type="submit" class="btn btn-primary">Submit Answers</button>
-    </form>
-
+    <div id="questions-container" class="mb-4 d-none">
+        <!-- Questions will be dynamically loaded here -->
+    </div>
     <div id="summary-container" class="mt-4">
         <!-- Overall feedback will be displayed here -->
     </div>
@@ -40,6 +35,7 @@
                     alert(data.message);
                 } else {
                     const questionsContainer = document.getElementById("questions-container");
+                    questionsContainer.classList.remove("d-none");
                     questionsContainer.innerHTML = "";
                     data.questions.forEach(question => {
                         const questionDiv = document.createElement("div");
@@ -48,80 +44,67 @@
                             <label for="question_${question.question_num}" class="form-label">
                                 Question ${question.question_num}
                             </label>
-                            <input type="text" class="form-control answer-input" id="question_${question.question_num}" 
-                                   name="answers[${question.question_num}]" required>
+                            <div class="input-group">
+                                <input type="text" class="form-control answer-input" id="question_${question.question_num}" 
+                                       name="answer" required>
+                                <button type="button" class="btn btn-primary submit-answer-btn" data-question="${question.question_num}">
+                                    Submit
+                                </button>
+                            </div>
                             <small class="feedback text-muted" id="feedback_${question.question_num}"></small>
                         `;
                         questionsContainer.appendChild(questionDiv);
                     });
-                    document.getElementById("submit-token").value = token; // Set hidden token input
-                    document.getElementById("submit-answers-form").classList.remove("d-none");
+
+                    document.querySelectorAll(".submit-answer-btn").forEach(button => {
+                        button.addEventListener("click", function () {
+                            const questionNum = this.dataset.question;
+                            const answerInput = document.getElementById(`question_${questionNum}`);
+                            const answer = answerInput.value.trim();
+                            const feedbackElement = document.getElementById(`feedback_${questionNum}`);
+
+                            if (!answer) {
+                                feedbackElement.textContent = "Answer is required.";
+                                feedbackElement.className = "text-danger";
+                                return;
+                            }
+
+                            fetch("/submit-answer", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/x-www-form-urlencoded"
+                                },
+                                body: new URLSearchParams({
+                                    token: token,
+                                    team: "{{ session['user'].get('preferred_username') }}",
+                                    question_num: questionNum,
+                                    answer_num: answer
+                                })
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.correct) {
+                                        answerInput.classList.add("is-valid");
+                                        answerInput.classList.remove("is-invalid");
+                                        feedbackElement.textContent = "Correct!";
+                                        feedbackElement.className = "text-success";
+                                    } else {
+                                        answerInput.classList.add("is-invalid");
+                                        answerInput.classList.remove("is-valid");
+                                        feedbackElement.textContent = "Incorrect.";
+                                        feedbackElement.className = "text-danger";
+                                    }
+                                })
+                                .catch(error => {
+                                    feedbackElement.textContent = "Error submitting answer.";
+                                    feedbackElement.className = "text-danger";
+                                });
+                        });
+                    });
                 }
             })
             .catch(error => {
                 alert("Error loading quiz: " + error);
-            });
-    });
-
-    document.getElementById("submit-answers-form").addEventListener("submit", function (event) {
-        event.preventDefault();
-
-        const formData = new FormData(this);
-        const answers = {};
-
-        // Process form data into the `answers` object
-        formData.forEach((value, key) => {
-            if (key.startsWith("answers[")) {
-                const match = key.match(/answers\[(\d+)\]/); // Fix regex to handle valid patterns
-                if (match) {
-                    const questionNum = match[1];
-                    answers[questionNum] = value.trim(); // Trim whitespace for consistency
-                }
-            }
-        });
-
-        const token = formData.get("token");
-
-        if (!token || Object.keys(answers).length === 0) {
-            alert("Ensure all answers are filled and a token is provided.");
-            return;
-        }
-
-        const payload = {
-            token: token,
-            answers: answers
-        };
-
-        fetch("/api/submit-answers", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-            .then(response => response.json())
-            .then(data => {
-                for (const [questionNum, feedback] of Object.entries(data.feedback)) {
-                    const feedbackElement = document.getElementById(`feedback_${questionNum}`);
-                    const inputElement = document.getElementById(`question_${questionNum}`);
-                    if (feedback.correct) {
-                        inputElement.classList.add("is-valid");
-                        inputElement.classList.remove("is-invalid");
-                        feedbackElement.className = "feedback text-success";
-                        feedbackElement.textContent = "Correct!";
-                    } else {
-                        inputElement.classList.add("is-invalid");
-                        inputElement.classList.remove("is-valid");
-                        feedbackElement.className = "feedback text-danger";
-                        feedbackElement.textContent = `Incorrect.`;
-                    }
-                }
-
-                // Display overall summary
-                const summaryContainer = document.getElementById("summary-container");
-                summaryContainer.textContent = data.message;
-                summaryContainer.className = "alert alert-info";
-            })
-            .catch(error => {
-                alert("Error submitting answers: " + error);
             });
     });
 </script>
