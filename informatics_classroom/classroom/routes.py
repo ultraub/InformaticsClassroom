@@ -684,7 +684,7 @@ def get_session_quizzes():
     return jsonify({"quizzes": quizzes}), 200
 
 
-def process_answers(token, team, answers):
+def process_answers(token, answers):
     """Validate and store multiple answers."""
     # Validate token
     container = init_cosmos('tokens', DATABASE)
@@ -698,6 +698,19 @@ def process_answers(token, team, answers):
     token_data = result[0]
     class_val = token_data.get("class_val")
     module_val = token_data.get("module_val")
+    team = token_data.get("user")
+    expiration = token_data.get("expiry")  # Expected to be in ISO 8601 format
+
+    # Check if the token has expired
+    if not expiration:
+        return {"message": "Token does not have an expiration date.", "status": 400, "feedback": {}}
+    
+    try:
+        expiration_date = dt.datetime.fromisoformat(expiration)
+        if dt.datetime.utcnow() > expiration_date:
+            return {"message": "Token has expired.", "status": 403, "feedback": {}}
+    except ValueError:
+        return {"message": "Invalid expiration date format in token.", "status": 400, "feedback": {}}
 
     if not class_val or module_val is None:
         return {"message": "Invalid class or module in token", "status": 400, "feedback": {}}
@@ -751,6 +764,7 @@ def process_answers(token, team, answers):
         answer_container.upsert_item(attempt)
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
+
 
 def process_answers_session(class_val, module_val, team, answers):
     """Validate and store multiple answers based on session access."""
@@ -809,18 +823,18 @@ def process_answers_session(class_val, module_val, team, answers):
 def submit_answer():
     """Handle submission of a single answer."""
     token = request.form.get("token")  # Optional for token-based submissions
-    team = session['user'].get('preferred_username')
+    team = session['user'].get('preferred_username') if session.get('user') else None
     question_num = request.form.get("question_num")
     answer_num = request.form.get("answer_num")
-    class_val = request.form.get("class_val")  # New for session-based submissions
-    module_val = request.form.get("module_val")  # New for session-based submissions
+    class_val = request.form.get("class_val") if request.form.get("class_val") else request.form.get("class")  # New for session-based submissions
+    module_val = request.form.get("module_val") if request.form.get("module_val") else request.form.get("module") # New for session-based submissions
 
-    if not all([team, question_num, answer_num]) or (not token and not (class_val and module_val)):
+    if not all([team, question_num, answer_num]) and (not token and not (class_val and module_val)):
         return jsonify({"message": "Missing required fields"}), 400
 
     if token:
         # Token-based processing
-        result = process_answers(token, team, {question_num: answer_num})
+        result = process_answers(token, {question_num: answer_num})
     else:
         # Session-based processing
         result = process_answers_session(class_val, module_val, team, {question_num: answer_num})
@@ -850,7 +864,7 @@ def submit_answers():
     if not answers:
         return jsonify({"message": "No answers provided"}), 400
 
-    result = process_answers(token, team, answers)
+    result = process_answers(token, answers)
     feedback = result["feedback"]
     correct_count = sum(1 for response in feedback.values() if response.get("correct", False))
     total_questions = len(answers)
