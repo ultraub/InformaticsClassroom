@@ -28,24 +28,27 @@
     <div id="summary-container" class="mt-4"></div>
 </div>
 
-
 <script>
+    // Select the required DOM elements
+    const classSelect = document.getElementById("class-select");
+    const moduleSelect = document.getElementById("module-select");
+    const loadQuizBtn = document.getElementById("load-quiz-btn");
+    const questionsContainer = document.getElementById("questions-container");
+
+    // Fetch quizzes and populate class and module dropdowns when the page loads
     document.addEventListener("DOMContentLoaded", function () {
-        const classSelect = document.getElementById("class-select");
-        const moduleSelect = document.getElementById("module-select");
-        const loadQuizBtn = document.getElementById("load-quiz-btn");
-        const questionsContainer = document.getElementById("questions-container");
-    
-        // Fetch quizzes for the user
         fetch("/api/get-session-quizzes")
-            .then(response => response.json())
+            .then(response => {
+                console.log("DEBUG: Fetching quizzes. Response status:", response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log("DEBUG: Received data:", data);
                 if (data.message) {
                     alert(data.message);
                     return;
                 }
-    
-                // Group modules under their respective classes
+
                 const classes = {};
                 data.quizzes.forEach(quiz => {
                     if (!classes[quiz.class]) {
@@ -56,7 +59,9 @@
                         title: quiz.title
                     });
                 });
-    
+
+                console.log("DEBUG: Classes grouped by class name:", classes);
+
                 // Populate the class dropdown
                 Object.keys(classes).forEach(className => {
                     const option = document.createElement("option");
@@ -64,10 +69,10 @@
                     option.textContent = className;
                     classSelect.appendChild(option);
                 });
-    
+
                 classSelect.addEventListener("change", function () {
                     const selectedClass = this.value;
-    
+
                     // Populate the module dropdown based on the selected class
                     moduleSelect.innerHTML = '<option value="" selected disabled>Select a module</option>';
                     classes[selectedClass].forEach(module => {
@@ -76,106 +81,135 @@
                         option.textContent = `Module ${module.module} (${module.title})`;
                         moduleSelect.appendChild(option);
                     });
-    
+
                     moduleSelect.disabled = false;
                     loadQuizBtn.disabled = true; // Disable until module is selected
                 });
-    
+
                 moduleSelect.addEventListener("change", function () {
                     loadQuizBtn.disabled = false; // Enable the load button once a module is selected
                 });
             })
             .catch(error => {
+                console.error("Error loading quizzes:", error);
                 alert("Error loading quizzes: " + error);
             });
+    });
+
+    // Load selected quiz when the "Load Quiz" button is clicked
+    loadQuizBtn.addEventListener("click", function () {
+        const selectedClass = classSelect.value;
+        const selectedModule = moduleSelect.value;
     
-        // Load selected quiz
-        loadQuizBtn.addEventListener("click", function () {
-            const selectedClass = classSelect.value;
-            const selectedModule = moduleSelect.value;
+        if (!selectedClass || !selectedModule) {
+            alert("Please select both a class and a module.");
+            return;
+        }
     
-            if (!selectedClass || !selectedModule) {
-                alert("Please select both a class and a module.");
-                return;
-            }
+        fetch(`/api/get-quiz-content?class_val=${selectedClass}&module_val=${selectedModule}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
     
-            fetch(`/api/get-quiz-content?class_val=${selectedClass}&module_val=${selectedModule}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        alert(data.message);
-                        return;
+                questionsContainer.classList.remove("d-none");
+                questionsContainer.innerHTML = "";
+    
+                const recentAnswers = data.recent_answers || {};
+    
+                data.questions.forEach(question => {
+                    const questionNum = question.question_num;
+                    const recentAnswer = recentAnswers[questionNum] || null;
+                    const answerValue = recentAnswer ? recentAnswer.answer : "";
+    
+                    const questionDiv = document.createElement("div");
+                    questionDiv.className = "question mb-3";
+    
+                    questionDiv.innerHTML = `
+                        <label for="question_${questionNum}" class="form-label">
+                            Question ${questionNum}
+                        </label>
+                        <div class="input-group">
+                            <input type="text" class="form-control answer-input" id="question_${questionNum}" 
+                                   name="answer" value="${answerValue}" required>
+                            <button type="button" class="btn btn-primary submit-answer-btn" data-question="${questionNum}">
+                                Submit
+                            </button>
+                        </div>
+                        <small class="feedback text-muted" id="feedback_${questionNum}"></small>
+                    `;
+    
+                    const feedbackElement = questionDiv.querySelector(`#feedback_${questionNum}`);
+                    const answerInput = questionDiv.querySelector(`#question_${questionNum}`);
+    
+                    // Update feedback only if the question has been attempted
+                    if (recentAnswer) {
+                        if (recentAnswer.correct) {
+                            feedbackElement.textContent = "Correct!";
+                            feedbackElement.className = "text-success";
+                            answerInput.classList.add("is-valid");
+                        } else {
+                            feedbackElement.textContent = "Incorrect.";
+                            feedbackElement.className = "text-danger";
+                            answerInput.classList.add("is-invalid");
+                        }
                     }
     
-                    questionsContainer.classList.remove("d-none");
-                    questionsContainer.innerHTML = "";
-    
-                    data.questions.forEach(question => {
-                        const questionDiv = document.createElement("div");
-                        questionDiv.className = "question mb-3";
-                        questionDiv.innerHTML = `
-                            <label for="question_${question.question_num}" class="form-label">
-                                Question ${question.question_num}
-                            </label>
-                            <div class="input-group">
-                                <input type="text" class="form-control answer-input" id="question_${question.question_num}" 
-                                       name="answer" required>
-                                <button type="button" class="btn btn-primary submit-answer-btn" data-question="${question.question_num}">
-                                    Submit
-                                </button>
-                            </div>
-                            <small class="feedback text-muted" id="feedback_${question.question_num}"></small>
-                        `;
-                        questionsContainer.appendChild(questionDiv);
-                    });
-    
-                    // Attach answer submission listeners
-                    document.querySelectorAll(".submit-answer-btn").forEach(button => {
-                        button.addEventListener("click", function () {
-                            const questionNum = this.dataset.question;
-                            const answerInput = document.getElementById(`question_${questionNum}`);
-                            const answer = answerInput.value.trim();
-                            const feedbackElement = document.getElementById(`feedback_${questionNum}`);
-    
-                            if (!answer) {
-                                feedbackElement.textContent = "Answer is required.";
-                                feedbackElement.className = "text-danger";
-                                return;
-                            }
-    
-                            fetch("/submit-answer", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                                body: new URLSearchParams({
-                                    team: "{{ session['user'].get('preferred_username') }}",
-                                    class_val: selectedClass,
-                                    module_val: selectedModule,
-                                    question_num: questionNum,
-                                    answer_num: answer
-                                })
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.correct) {
-                                        feedbackElement.textContent = "Correct!";
-                                        feedbackElement.className = "text-success";
-                                    } else {
-                                        feedbackElement.textContent = "Incorrect.";
-                                        feedbackElement.className = "text-danger";
-                                    }
-                                })
-                                .catch(error => {
-                                    feedbackElement.textContent = "Error submitting answer.";
-                                    feedbackElement.className = "text-danger";
-                                });
-                        });
-                    });
-                })
-                .catch(error => {
-                    alert("Error loading quiz: " + error);
+                    questionsContainer.appendChild(questionDiv);
                 });
-        });
-    });    
+    
+                // Attach answer submission listeners
+                document.querySelectorAll(".submit-answer-btn").forEach(button => {
+                    button.addEventListener("click", function () {
+                        const questionNum = this.dataset.question;
+                        const answerInput = document.getElementById(`question_${questionNum}`);
+                        const answer = answerInput.value.trim();
+                        const feedbackElement = document.getElementById(`feedback_${questionNum}`);
+    
+                        if (!answer) {
+                            feedbackElement.textContent = "Answer is required.";
+                            feedbackElement.className = "text-danger";
+                            return;
+                        }
+    
+                        fetch("/submit-answer", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                            body: new URLSearchParams({
+                                team: "{{ session['user'].get('preferred_username') }}",
+                                class_val: selectedClass,
+                                module_val: selectedModule,
+                                question_num: questionNum,
+                                answer_num: answer
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.correct) {
+                                    feedbackElement.textContent = "Correct!";
+                                    feedbackElement.className = "text-success";
+                                    answerInput.classList.add("is-valid");
+                                    answerInput.classList.remove("is-invalid");
+                                } else {
+                                    feedbackElement.textContent = "Incorrect.";
+                                    feedbackElement.className = "text-danger";
+                                    answerInput.classList.add("is-invalid");
+                                    answerInput.classList.remove("is-valid");
+                                }
+                            })
+                            .catch(error => {
+                                feedbackElement.textContent = "Error submitting answer.";
+                                feedbackElement.className = "text-danger";
+                            });
+                    });
+                });
+            })
+            .catch(error => {
+                alert("Error loading quiz: " + error);
+            });
+    });
+    
 </script>
-
 {% endblock %}

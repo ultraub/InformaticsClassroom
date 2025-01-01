@@ -245,35 +245,61 @@ def get_quiz_details():
 
 @classroom_bp.route("/api/get-quiz-content", methods=["GET"])
 def get_quiz_content():
-    """Retrieve the content of a quiz based on class and module."""
+    """Retrieve the content of a quiz along with submitted answers."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
     class_val = request.args.get("class_val")
     module_val = request.args.get("module_val")
+    team = session['user'].get('preferred_username')
 
     if not class_val or not module_val:
         return jsonify({"message": "Class and module values are required."}), 400
 
     # Fetch the quiz data
-    container = init_cosmos('quiz', DATABASE)
-    query = """
+    quiz_container = init_cosmos('quiz', DATABASE)
+    quiz_query = """
         SELECT * FROM c
         WHERE c.class = @class_val AND c.module = @module_val
     """
-    parameters = [
+    quiz_parameters = [
         {"name": "@class_val", "value": class_val},
         {"name": "@module_val", "value": int(module_val)},
     ]
-    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    quizzes = list(quiz_container.query_items(query=quiz_query, parameters=quiz_parameters, enable_cross_partition_query=True))
 
     if not quizzes:
         return jsonify({"message": "Quiz not found."}), 404
 
-    quiz = quizzes[0]  # Assuming unique class and module combination
+    quiz = quizzes[0]
+
+    # Fetch submitted answers
+    answer_container = init_cosmos('answer', DATABASE)
+    answer_query = """
+        SELECT c.question, c.answer, c.correct FROM c
+        WHERE c.PartitionKey = @partition_key AND c.team = @team
+        ORDER BY c.datetime DESC
+    """
+    answer_parameters = [
+        {"name": "@partition_key", "value": f"{class_val}_{module_val}"},
+        {"name": "@team", "value": team}
+    ]
+    answers = list(answer_container.query_items(query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True))
+
+    # Map the most recent answers per question
+    recent_answers = {}
+    for answer in answers:
+        question_num = answer["question"]
+        if question_num not in recent_answers:
+            recent_answers[question_num] = {
+                "answer": answer["answer"],
+                "correct": bool(answer["correct"]),
+            }
+
     return jsonify({
         "title": quiz.get("title"),
         "questions": quiz.get("questions", []),
+        "recent_answers": recent_answers
     }), 200
 
 
@@ -783,7 +809,7 @@ def process_answers_session(class_val, module_val, team, answers):
 def submit_answer():
     """Handle submission of a single answer."""
     token = request.form.get("token")  # Optional for token-based submissions
-    team = request.form.get("team") or session['user'].get('preferred_username')
+    team = session['user'].get('preferred_username')
     question_num = request.form.get("question_num")
     answer_num = request.form.get("answer_num")
     class_val = request.form.get("class_val")  # New for session-based submissions
