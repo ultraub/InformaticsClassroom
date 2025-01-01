@@ -49,7 +49,7 @@
                 return;
             }
 
-            fetch(`/api/get-quiz-content?quiz_id=${quizId}`)
+            fetch(`/api/get-quiz-content-modify?quiz_id=${quizId}`)
                 .then(response => response.json())
                 .then(data => {
                     questionCount = data.questions.length;

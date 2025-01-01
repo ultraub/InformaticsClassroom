@@ -302,6 +302,23 @@ def get_quiz_content():
         "recent_answers": recent_answers
     }), 200
 
+@classroom_bp.route("/api/get-quiz-content-modify", methods=["GET"])
+def get_quiz_content_modify():
+    """Retrieve questions for a specific quiz."""
+    quiz_id = request.args.get("quiz_id")
+    if not quiz_id:
+        return jsonify({"message": "Quiz ID is required"}), 400
+
+    container = init_cosmos('quiz', DATABASE)
+    query = "SELECT * FROM c WHERE c.id = @quiz_id"
+    parameters = [{"name": "@quiz_id", "value": quiz_id}]
+    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not quizzes:
+        return jsonify({"message": "Quiz not found"}), 404
+
+    quiz = quizzes[0]
+    return jsonify({"questions": quiz.get("questions", [])}), 200
 
 @classroom_bp.route("/api/generate-token", methods=["POST"])
 def generate_token():
@@ -1009,6 +1026,9 @@ def exercise_review():
         questions = quiz.get("questions", [])
         partition_key = f"{class_name}_{module}"
 
+        # Create a set of active question numbers
+        active_questions = {str(q["question_num"]) for q in questions}
+
         # Fetch answers for the corresponding quiz
         answer_query = """
             SELECT c.question, c.correct FROM c
@@ -1019,11 +1039,12 @@ def exercise_review():
             query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True
         ))
 
-        # Calculate distinct questions attempted and correctly answered
-        questions_attempted = {answer["question"] for answer in answers}
-        correct_questions = {answer["question"] for answer in answers if answer.get("correct", 0) == 1}
+        # Filter answers to include only active questions
+        filtered_answers = [a for a in answers if str(a["question"]) in active_questions]
+        questions_attempted = {a["question"] for a in filtered_answers}
+        correct_questions = {a["question"] for a in filtered_answers if a.get("correct", 0) == 1}
 
-        total_questions = len(questions)
+        total_questions = len(active_questions)
         num_attempted = len(questions_attempted)
         num_correct = len(correct_questions)
 
