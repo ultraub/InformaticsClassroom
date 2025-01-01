@@ -15,13 +15,19 @@
 
     <div id="questions-container" class="d-none mb-4">
         <h3>Questions</h3>
-        <!-- Questions will be dynamically loaded here -->
+        <button type="button" id="add-question-btn" class="btn btn-success mb-3">Add Question</button>
+        <div id="questions-list">
+            <!-- Questions will be dynamically loaded here -->
+        </div>
+        <button type="button" id="update-quiz-btn" class="btn btn-primary">Update Quiz</button>
     </div>
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // Fetch quizzes the user has access to
+        let questionCount = 0; // Tracks the number of questions
+
+        // Fetch quizzes
         fetch("/api/view-quizzes")
             .then(response => response.json())
             .then(data => {
@@ -33,10 +39,9 @@
                     quizSelect.appendChild(option);
                 });
             })
-            .catch(error => {
-                alert("Error loading quizzes: " + error);
-            });
+            .catch(error => alert("Error loading quizzes: " + error));
 
+        // Load quiz content
         document.getElementById("load-quiz-btn").addEventListener("click", function () {
             const quizId = document.getElementById("quiz-select").value;
             if (!quizId) {
@@ -44,80 +49,100 @@
                 return;
             }
 
-            // Load quiz questions
             fetch(`/api/get-quiz-content?quiz_id=${quizId}`)
                 .then(response => response.json())
                 .then(data => {
+                    questionCount = data.questions.length;
                     const questionsContainer = document.getElementById("questions-container");
+                    const questionsList = document.getElementById("questions-list");
                     questionsContainer.classList.remove("d-none");
-                    questionsContainer.innerHTML = "";
+                    questionsList.innerHTML = "";
 
-                    data.questions.forEach(question => {
-                        const questionDiv = document.createElement("div");
-                        questionDiv.className = "question mb-3";
-                        questionDiv.innerHTML = `
-                            <label for="question_${question.question_num}" class="form-label">
-                                Question ${question.question_num}
-                            </label>
-                            <div class="input-group">
-                                <input type="text" class="form-control answer-input" id="question_${question.question_num}" 
-                                       value="${question.correct_answer}">
-                                <button type="button" class="btn btn-primary update-answer-btn" 
-                                        data-quiz="${quizId}" data-question="${question.question_num}">
-                                    Update
-                                </button>
-                            </div>
-                            <small class="feedback text-muted" id="feedback_${question.question_num}"></small>
-                        `;
-                        questionsContainer.appendChild(questionDiv);
-                    });
-
-                    // Attach event listeners to update buttons
-                    document.querySelectorAll(".update-answer-btn").forEach(button => {
-                        button.addEventListener("click", function () {
-                            const quizId = this.dataset.quiz;
-                            const questionNum = this.dataset.question;
-                            const answerInput = document.getElementById(`question_${questionNum}`);
-                            const updatedAnswer = answerInput.value.trim();
-                            const feedbackElement = document.getElementById(`feedback_${questionNum}`);
-
-                            if (!updatedAnswer) {
-                                feedbackElement.textContent = "Answer is required.";
-                                feedbackElement.className = "text-danger";
-                                return;
-                            }
-
-                            fetch("/api/modify-quiz", {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({
-                                    quiz_id: quizId,
-                                    question_num: questionNum,
-                                    correct_answer: updatedAnswer
-                                })
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        feedbackElement.textContent = "Updated successfully.";
-                                        feedbackElement.className = "text-success";
-                                    } else {
-                                        feedbackElement.textContent = "Update failed.";
-                                        feedbackElement.className = "text-danger";
-                                    }
-                                })
-                                .catch(error => {
-                                    feedbackElement.textContent = "Error updating answer.";
-                                    feedbackElement.className = "text-danger";
-                                });
-                        });
+                    data.questions.forEach((question, index) => {
+                        questionsList.appendChild(createQuestionElement(question, index + 1));
                     });
                 })
-                .catch(error => {
-                    alert("Error loading quiz content: " + error);
-                });
+                .catch(error => alert("Error loading quiz content: " + error));
+        });
+
+        // Add a new question
+        document.getElementById("add-question-btn").addEventListener("click", function () {
+            questionCount++;
+            const questionsList = document.getElementById("questions-list");
+            questionsList.appendChild(createQuestionElement({ correct_answer: "", open: false }, questionCount));
+            renumberQuestions();
+        });
+
+        // Create a question element
+        function createQuestionElement(question, questionNum) {
+            const questionDiv = document.createElement("div");
+            questionDiv.className = "question mb-3 p-3 border rounded";
+            questionDiv.dataset.questionNum = questionNum;
+            questionDiv.innerHTML = `
+                <h5>Question ${questionNum}</h5>
+                <div class="row mb-2">
+                    <div class="col-md-8">
+                        <input type="text" class="form-control answer-input" 
+                               placeholder="Correct Answer" value="${question.correct_answer || ""}">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-center">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input open-input" 
+                                   ${question.open ? "checked" : ""}>
+                            <label class="form-check-label">Open-Ended</label>
+                        </div>
+                        <button type="button" class="btn btn-danger ms-3 remove-question-btn">Remove</button>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listener for removal
+            questionDiv.querySelector(".remove-question-btn").addEventListener("click", function () {
+                questionDiv.remove();
+                renumberQuestions();
+            });
+
+            return questionDiv;
+        }
+
+        // Renumber questions
+        function renumberQuestions() {
+            const questions = document.querySelectorAll("#questions-list .question");
+            questions.forEach((question, index) => {
+                question.dataset.questionNum = index + 1;
+                question.querySelector("h5").textContent = `Question ${index + 1}`;
+            });
+        }
+
+        // Update quiz
+        document.getElementById("update-quiz-btn").addEventListener("click", function () {
+            const quizId = document.getElementById("quiz-select").value;
+            if (!quizId) {
+                alert("Please select a quiz.");
+                return;
+            }
+
+            const questions = [];
+            document.querySelectorAll("#questions-list .question").forEach((question, index) => {
+                const correctAnswer = question.querySelector(".answer-input").value.trim();
+                const open = question.querySelector(".open-input").checked;
+                questions.push({ question_num: index + 1, correct_answer: correctAnswer, open: open });
+            });
+
+            fetch("/api/modify-quiz", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quiz_id: quizId, questions: questions })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Quiz updated successfully.");
+                    } else {
+                        alert("Failed to update quiz.");
+                    }
+                })
+                .catch(error => alert("Error updating quiz: " + error));
         });
     });
 </script>

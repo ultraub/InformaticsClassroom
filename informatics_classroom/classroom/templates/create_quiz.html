@@ -12,7 +12,15 @@
             <label for="description" class="form-label">Description</label>
             <textarea id="description" name="description" class="form-control" rows="3" required></textarea>
         </div>
-        <div id="questions-container" class="mb-3">
+        <div class="mb-3">
+            <label for="class" class="form-label">Class</label>
+            <input type="text" id="class" name="class" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="module" class="form-label">Module</label>
+            <input type="number" id="module" name="module" class="form-control" required>
+        </div>
+        <div id="questions-container">
             <h4>Questions</h4>
             <button type="button" id="add-question-btn" class="btn btn-secondary mb-3">Add Question</button>
         </div>
@@ -30,18 +38,42 @@
         const questionDiv = document.createElement("div");
         questionDiv.className = "question mb-3";
         questionDiv.innerHTML = `
-            <label for="question_${questionCount}" class="form-label">Question ${questionCount}</label>
-            <textarea id="question_${questionCount}" name="questions[${questionCount}][text]" class="form-control" rows="2" required></textarea>
+            <h5>Question ${questionCount}</h5>
+            <input type="hidden" name="questions[${questionCount}][question_num]" value="${questionCount}">
             <label for="answer_${questionCount}" class="form-label">Correct Answer</label>
-            <input type="text" id="answer_${questionCount}" name="questions[${questionCount}][correct_answer]" class="form-control" required>
+            <input type="text" id="answer_${questionCount}" name="questions[${questionCount}][correct_answer]" class="form-control">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="open_${questionCount}" name="questions[${questionCount}][open]" value="True">
+                <label class="form-check-label" for="open_${questionCount}">Open-Ended</label>
+            </div>
         `;
         questionsContainer.appendChild(questionDiv);
     });
 
     document.getElementById("create-quiz-form").addEventListener("submit", function(event) {
         event.preventDefault();
+        
         const formData = new FormData(this);
-        const jsonData = Object.fromEntries(formData.entries());
+        const questions = [];
+        
+        formData.forEach((value, key) => {
+            const match = key.match(/^questions\[(\d+)\]\[(\w+)\]$/);
+            if (match) {
+                const index = parseInt(match[1], 10);
+                const field = match[2];
+                questions[index] = questions[index] || {};
+                questions[index][field] = field === 'question_num' ? parseInt(value, 10) : value;
+            }
+        });
+
+        const jsonData = {
+            quiz_title: formData.get('quiz_title'),
+            description: formData.get('description'),
+            class: formData.get('class'),
+            module: parseInt(formData.get('module'), 10),
+            id: `${formData.get('class')}_${formData.get('module')}`,
+            questions: questions
+        };
 
         fetch("/api/create-quiz", {
             method: "POST",

@@ -265,33 +265,58 @@ def generate_token():
     return jsonify({"token": token, "expiry": expiry_time.isoformat()}), 201
 
 
-
 @classroom_bp.route("/api/create-quiz", methods=["POST"])
 def create_quiz():
     """Create a new quiz."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
-    quiz_title = request.json.get('quiz_title')
-    description = request.json.get('description')
-    questions = request.json.get('questions', [])
+    data = request.json
+    quiz_title = data.get('quiz_title')
+    description = data.get('description')
+    class_val = data.get('class')
+    module = data.get('module')
+    questions = data.get('questions', [])
     created_by = session['user'].get('preferred_username')
 
-    if not quiz_title or not description or not questions:
+    if not quiz_title or not description or not class_val or module is None:
         return jsonify({"message": "Invalid input"}), 400
 
-    container = init_cosmos('quizzes', DATABASE)
+    # Filter and process valid questions
+    processed_questions = []
+    for question in questions:
+        if isinstance(question, dict):  # Only process valid dictionaries
+            question_num = question.get("question_num")
+            correct_answer = question.get("correct_answer", "")
+            open_flag = question.get("open", "False") == "True"
+
+            if question_num is not None:  # Ensure question_num exists
+                processed_questions.append({
+                    "question_num": question_num,
+                    "correct_answer": correct_answer,
+                    "open": open_flag
+                })
+
+    if not processed_questions:
+        return jsonify({"message": "Invalid input: No valid questions provided"}), 400
+
+    quiz_id = f"{class_val}_{module}"
     quiz = {
-        'id': f"{quiz_title.lower().replace(' ', '_')}",
+        'id': quiz_id,
+        'class': class_val,
+        'module': module,
         'title': quiz_title,
         'description': description,
-        'questions': questions,
+        'questions': processed_questions,
         'owner': created_by,
         'created_at': dt.datetime.utcnow().isoformat(),
         'updated_at': dt.datetime.utcnow().isoformat()
     }
+
+    container = init_cosmos('quiz', DATABASE)
     container.upsert_item(quiz)
-    return jsonify({"message": "Quiz created successfully", "quiz_id": quiz['id']}), 201
+    return jsonify({"message": "Quiz created successfully", "quiz_id": quiz_id}), 201
+
 
 @classroom_bp.route("/api/manage-user", methods=["POST"])
 def manage_user():
@@ -324,17 +349,16 @@ def manage_user():
 
 @classroom_bp.route("/api/modify-quiz", methods=["POST"])
 def modify_quiz():
-    """Update a specific question's correct answer with logging details."""
+    """Update a specific quiz's questions and track changes."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
     data = request.json
     quiz_id = data.get("quiz_id")
-    question_num = data.get("question_num")
-    correct_answer = data.get("correct_answer")
+    questions = data.get("questions", [])  # Accepting the entire questions array
 
-    if not quiz_id or not question_num or correct_answer is None:
-        return jsonify({"message": "Missing required fields"}), 400
+    if not quiz_id or not isinstance(questions, list):
+        return jsonify({"message": "Missing or invalid required fields"}), 400
 
     updated_by = session['user'].get('preferred_username')
     update_datetime = str(dt.datetime.utcnow())
@@ -348,29 +372,89 @@ def modify_quiz():
         return jsonify({"message": "Quiz not found"}), 404
 
     quiz = quizzes[0]
-    question_found = False
+    existing_questions = {q["question_num"]: q for q in quiz.get("questions", [])}
 
-    # Update the question
-    for question in quiz.get("questions", []):
-        if str(question["question_num"]) == str(question_num):
-            question["correct_answer"] = correct_answer
-            question["updated_by"] = updated_by
-            question["update_datetime"] = update_datetime
-            question_found = True
-            break
+    # Track changes
+    updated_questions = []
+    changes = []
 
-    if not question_found:
-        return jsonify({"message": "Question not found in the quiz"}), 404
+    for idx, question in enumerate(questions, start=1):
+        question_num = question.get("question_num", idx)
+        correct_answer = question.get("correct_answer", "")
+        open_flag = question.get("open", False)
 
-    # Upsert the updated quiz
+        if question_num in existing_questions:
+            original = existing_questions[question_num]
+            if original["correct_answer"] != correct_answer or original["open"] != open_flag:
+                changes.append({
+                    "question_num": question_num,
+                    "change_type": "update",
+                    "updated_by": updated_by,
+                    "update_datetime": update_datetime,
+                    "old_value": {
+                        "correct_answer": original["correct_answer"],
+                        "open": original["open"]
+                    },
+                    "new_value": {
+                        "correct_answer": correct_answer,
+                        "open": open_flag
+                    }
+                })
+            updated_questions.append({
+                "question_num": question_num,
+                "correct_answer": correct_answer,
+                "open": open_flag,
+                "change_log": original.get("change_log", []) + [changes[-1]] if changes else original.get("change_log", [])
+            })
+        else:
+            changes.append({
+                "question_num": question_num,
+                "change_type": "add",
+                "updated_by": updated_by,
+                "update_datetime": update_datetime,
+                "new_value": {
+                    "correct_answer": correct_answer,
+                    "open": open_flag
+                }
+            })
+            updated_questions.append({
+                "question_num": question_num,
+                "correct_answer": correct_answer,
+                "open": open_flag,
+                "change_log": [changes[-1]]
+            })
+
+    # Detect removed questions
+    removed_questions = set(existing_questions.keys()) - {q["question_num"] for q in updated_questions}
+    for question_num in removed_questions:
+        original = existing_questions[question_num]
+        changes.append({
+            "question_num": question_num,
+            "change_type": "delete",
+            "updated_by": updated_by,
+            "update_datetime": update_datetime,
+            "old_value": {
+                "correct_answer": original["correct_answer"],
+                "open": original["open"]
+            }
+        })
+
+    # Finalize the quiz
+    quiz["questions"] = updated_questions
+    quiz["updated_by"] = updated_by
+    quiz["update_datetime"] = update_datetime
+    quiz["change_log"] = quiz.get("change_log", []) + changes
+
     container.upsert_item(quiz)
 
     return jsonify({
         "success": True,
-        "message": "Question updated successfully",
+        "message": "Quiz updated successfully",
         "updated_by": updated_by,
-        "update_datetime": update_datetime
+        "update_datetime": update_datetime,
+        "changes": changes
     }), 200
+
 
 # Optional: Add a cleanup utility to remove expired tokens periodically
 @classroom_bp.route("/cleanup-tokens", methods=["POST"])
@@ -824,121 +908,3 @@ def exercise_review_open(exercise,questionnum):
     # Step 4 construct dataframe to send to html page
     df2=df[df.question==questionnum]
     return render_template("exercise_review.html",title='Exercise Review',user=session.get("user_name"),tables=[df2.to_html(classes='data',index=False)], exercise=exercise)
-
-@classroom_bp.route("/exercise_form/<exercise>",methods=['GET','POST'])
-def exercise_form(exercise):
-    """Exercise Form"""
-    #Step 1 get user information
-    ich.check_user_session(session)
-
-    # Step 2 get the exercise Structure
-    container=init_cosmos('quiz',DATABASE)
-    #Query quizes in cosmosdb to get the structure for this assignment
-    query = "SELECT * FROM c where c.id='{}'".format(exercise.lower())
-    items = list(container.query_items(
-        query=query,
-        enable_cross_partition_query=True )) 
-    if len(items)==0:
-        return "No assignment found with the name of {}".format(exercise)
-    qnum=len(items[0]['questions'])
-    #step 3 create form for that exercise
-    class A(FlaskForm):
-        a1 = StringField("Question Label")
-    
-    class B(FlaskForm):
-        q=FieldList(FormField(A),min_entries=qnum)
-        s=SubmitField("Submit Form")
-
-    form=B()
-
-    return render_template("exercise_form.html",form=form)
-
-@classroom_bp.route("/studentcenter",methods=['GET','POST'])
-def student_center():
-    items=[]
-    if not session.get("user"):
-        return redirect(url_for("auth_bp.login"))
-    if request.method=='POST':
-        #Get course name
-        class_name=request.form['wg1']
-        #Get quiz format from Cosmos
-        container=init_cosmos('quiz',DATABASE)
-        query = "SELECT * FROM c where c.class='{}' ORDER BY c.module".format(class_name.lower())
-        items = list(container.query_items(
-            query=query,
-            enable_cross_partition_query=True )) 
-        #Get username
-        user_name=session['user'].get('preferred_username').split('@')[0]
-        #Get all attempts for that person
-        table_service = TableService(account_name=Keys.account_name, account_key=Keys.storage_key)
-        tasks = table_service.query_entities('attempts', filter=f"team eq '{user_name}'")
-        df=pd.DataFrame(tasks)
-        #filter for correct answers and course name
-        df1=df[(df['correct']==1)&(df['course']==f"{class_name.lower()}")].copy()
-        #Loop through all the question in the quiz and update any the user got correct
-        for i in range(0,len(items)):
-            for j in range(0,len(items[i]['questions'])):
-                if len(df1[(df1.question==str(items[i]['questions'][j]['question_num']))&(df1.module==str(items[i]['module']))])>0:
-                    items[i]['questions'][j]['correct']=True       
-    return render_template("studentcenter.html",title='Student Center',form=ClassForm(),user=session["user"],items=items)
-
-# rbb 8/18 need a route to update questions
-@classroom_bp.route("/update_question",methods=['POST'])
-def update_question():
-
-    #user_name = ich.check_user_session(session)
-    data = json.loads(request.get_json())
-    try:
-        class_val = data['class_val']
-        module_val = data['module_val']
-        question_val = data['question']
-        updated_by = data['user']
-    except:
-        return 401
-
-    query = """
-        SELECT
-            *
-        FROM quiz q
-        where q.class = @class_val
-        and q.module = @module_val
-    """
-
-    parameters = [
-        {
-            "name" : "@class_val",
-            "value" : class_val.lower()
-        },
-        {
-            "name" : "@module_val",
-            "value" : int(module_val)
-        },
-    ]
-
-    container=init_cosmos('quiz',DATABASE)
-
-    result = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True))
-    
-
-
-    if len(result) != 1:
-        return "Error in results",401
-    
-
-    # needs to appropriate handle status codes and check for errors
-    #if ich.check_permissions(user_name, 'update_question'):
-
-    for i, question in enumerate(result[0]['questions']):        
-        if question['question_num'] == question_val['question_num']:
-            # rbb 08/26 do we need to validate the data in the question field?
-            result[0]['questions'][i] = question_val
-            result[0]['questions'][i]['updated_by'] = updated_by
-            result[0]['questions'][i]['update_datetime'] = str(dt.datetime.now())
-            break
-
-    container.replace_item(item=result[0]['id'], body=result[0])
-
-    return "success", 200
