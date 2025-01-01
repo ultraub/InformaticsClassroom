@@ -106,6 +106,36 @@ def manage_users_page():
     #or not is_admin(session['user']):
         return redirect(url_for("auth_bp.login"))
     return render_template("manage_users.html", title="Manage Users")
+
+@classroom_bp.route("/exercise-review", methods=["GET"])
+def exercise_review_page():
+    """Render the Exercise Review page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))  # Redirect to login if not authorized
+
+    user_id = session['user'].get('preferred_username')
+    user_container = init_cosmos('users', DATABASE)
+
+    # Fetch accessible classes for the user
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
+
+    if not user_result or "accessible_classes" not in user_result[0]:
+        return render_template("exercise_review.html", classes=[], title="Exercise Review")
+
+    accessible_classes = user_result[0]["accessible_classes"]
+
+    # Validate that the accessible_classes is a list
+    if not isinstance(accessible_classes, list):
+        accessible_classes = []
+
+    # Render the HTML with the accessible classes
+    return render_template("exercise_review.html", classes=accessible_classes, title="Exercise Review")
+
+
 # --- API ROUTES ---
 
 @classroom_bp.route("/api/view-quizzes", methods=["GET"])
@@ -215,21 +245,36 @@ def get_quiz_details():
 
 @classroom_bp.route("/api/get-quiz-content", methods=["GET"])
 def get_quiz_content():
-    """Retrieve questions for a specific quiz."""
-    quiz_id = request.args.get("quiz_id")
-    if not quiz_id:
-        return jsonify({"message": "Quiz ID is required"}), 400
+    """Retrieve the content of a quiz based on class and module."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
 
+    class_val = request.args.get("class_val")
+    module_val = request.args.get("module_val")
+
+    if not class_val or not module_val:
+        return jsonify({"message": "Class and module values are required."}), 400
+
+    # Fetch the quiz data
     container = init_cosmos('quiz', DATABASE)
-    query = "SELECT * FROM c WHERE c.id = @quiz_id"
-    parameters = [{"name": "@quiz_id", "value": quiz_id}]
+    query = """
+        SELECT * FROM c
+        WHERE c.class = @class_val AND c.module = @module_val
+    """
+    parameters = [
+        {"name": "@class_val", "value": class_val},
+        {"name": "@module_val", "value": int(module_val)},
+    ]
     quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
     if not quizzes:
-        return jsonify({"message": "Quiz not found"}), 404
+        return jsonify({"message": "Quiz not found."}), 404
 
-    quiz = quizzes[0]
-    return jsonify({"questions": quiz.get("questions", [])}), 200
+    quiz = quizzes[0]  # Assuming unique class and module combination
+    return jsonify({
+        "title": quiz.get("title"),
+        "questions": quiz.get("questions", []),
+    }), 200
 
 
 @classroom_bp.route("/api/generate-token", methods=["POST"])
@@ -579,6 +624,40 @@ def landingpage():
 def quiz():
     return render_template('quiz.html')
 
+@classroom_bp.route("/api/get-session-quizzes", methods=["GET"])
+def get_session_quizzes():
+    """Retrieve quizzes available to the user via session."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    user_id = session['user'].get('preferred_username')
+    container = init_cosmos('quiz', DATABASE)
+
+    query = """
+        SELECT * FROM c
+        WHERE c.owner = @user_id
+        OR ARRAY_CONTAINS(@accessible_classes, c.class)
+    """
+    user_container = init_cosmos('users', DATABASE)
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
+
+    if not user_result:
+        return jsonify({"message": "No accessible classes found."}), 404
+
+    accessible_classes = user_result[0].get("accessible_classes", [])
+    parameters = [
+        {"name": "@user_id", "value": user_id},
+        {"name": "@accessible_classes", "value": accessible_classes},
+    ]
+
+    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    return jsonify({"quizzes": quizzes}), 200
+
+
 def process_answers(token, team, answers):
     """Validate and store multiple answers."""
     # Validate token
@@ -647,24 +726,85 @@ def process_answers(token, team, answers):
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
 
+def process_answers_session(class_val, module_val, team, answers):
+    """Validate and store multiple answers based on session access."""
+    # Fetch all questions for the quiz
+    container = init_cosmos('quiz', DATABASE)
+    query = """
+        SELECT c.question_num, c.correct_answer FROM quiz q
+        JOIN c IN q.questions
+        WHERE q.class = @class_val AND q.module = @module_val
+    """
+    parameters = [
+        {"name": "@class_val", "value": class_val},
+        {"name": "@module_val", "value": int(module_val)},
+    ]
+    questions = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not questions:
+        return {"message": "Quiz not found", "status": 404, "feedback": {}}
+
+    # Create a lookup for correct answers
+    correct_answers = {str(q["question_num"]): str(q["correct_answer"]) for q in questions}
+
+    # Validate and log answers
+    feedback = {}
+    attempts = []
+    for question_num, answer_num in answers.items():
+        correct_answer = correct_answers.get(str(question_num))
+        if correct_answer is None:
+            feedback[question_num] = {"correct": False, "message": "Invalid question number"}
+            continue
+
+        is_correct = str(correct_answer) == str(answer_num)
+        feedback[question_num] = {"correct": is_correct}
+
+        attempts.append({
+            'PartitionKey': f"{class_val}_{module_val}",
+            'id': str(uuid.uuid4()),
+            'course': class_val,
+            'module': module_val,
+            'team': team,
+            'question': question_num,
+            'answer': answer_num,
+            'datetime': str(dt.datetime.utcnow()),
+            'correct': int(is_correct),
+        })
+
+    # Batch log attempts
+    answer_container = init_cosmos('answer', DATABASE)
+    for attempt in attempts:
+        answer_container.upsert_item(attempt)
+
+    return {"message": "Processed successfully", "status": 200, "feedback": feedback}
+
 
 @classroom_bp.route("/submit-answer", methods=['POST'])
 def submit_answer():
     """Handle submission of a single answer."""
-    token = request.form.get("token")
-    team = request.form.get("team")
+    token = request.form.get("token")  # Optional for token-based submissions
+    team = request.form.get("team") or session['user'].get('preferred_username')
     question_num = request.form.get("question_num")
     answer_num = request.form.get("answer_num")
+    class_val = request.form.get("class_val")  # New for session-based submissions
+    module_val = request.form.get("module_val")  # New for session-based submissions
 
-    if not all([token, team, question_num, answer_num]):
+    if not all([team, question_num, answer_num]) or (not token and not (class_val and module_val)):
         return jsonify({"message": "Missing required fields"}), 400
 
-    result = process_answers(token, team, {question_num: answer_num})
+    if token:
+        # Token-based processing
+        result = process_answers(token, team, {question_num: answer_num})
+    else:
+        # Session-based processing
+        result = process_answers_session(class_val, module_val, team, {question_num: answer_num})
+
     feedback = result["feedback"].get(question_num, {})
     return jsonify({
         "message": feedback.get("message", "Processed successfully"),
         "correct": feedback.get("correct", False),
     }), result["status"]
+
 
 
 
@@ -783,101 +923,117 @@ def assignment(class_val, module):
         anum=anum
     )
 
-@classroom_bp.route("/exercise_review/<exercise>")
-def exercise_review(exercise):
-    """Exercise Review shows all the students and their progress on an Exercise"""
+@classroom_bp.route("/api/exercise-review", methods=["GET"])
+def exercise_review():
+    """Retrieve progress data for classes the user has access to."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
 
-    course_name=str(exercise).split('_')[0]   
+    user_id = session['user'].get('preferred_username')
 
-    if ich.check_user_session(session) == False:
-        return redirect(url_for("auth_bp.login"))
+    # Fetch accessible quizzes from /api/view-quizzes logic
+    quiz_container = init_cosmos('quiz', DATABASE)
+    answer_container = init_cosmos('answer', DATABASE)
 
-    if ich.check_authorized_user(session, course_name) == False:
-        return redirect(url_for("auth_bp.login"))
-    # Step 2 get the exercise Structure
-     
-    # Step 2 get the exercise Structure
-    container=init_cosmos('answer',DATABASE)
-    #Query quizes in cosmosdb to get the structure for this assignment
-    # TODO rbb need to update to wrap queries in something where redirects on bad query
     query = """
-    SELECT 
-        c.PartitionKey, 
-        c.course, 
-        c.module, 
-        c.answer, 
-        c.team, 
-        c.question, 
-        c.correct,
-        (c.datetime = null) ? c.Timestamp : c.datetime datetime    
-    FROM c 
-    where c.PartitionKey = @id
+        SELECT * FROM c
+        WHERE c.owner = @user_id
+        OR ARRAY_CONTAINS(@accessible_classes, c.class)
     """
+    user_container = init_cosmos('users', DATABASE)
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
 
-    # rbb 08/13 - update to parameterized queries
+    if not user_result:
+        return jsonify({"message": "No accessible classes found."}), 404
+
+    accessible_classes = user_result[0].get("accessible_classes", [])
     parameters = [
-        {
-            "name" : "@id",
-            "value" : exercise.lower()
-        },
+        {"name": "@user_id", "value": user_id},
+        {"name": "@accessible_classes", "value": accessible_classes},
     ]
 
-    items = list(container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True )) 
-    if len(items)==0:
-        return f"No assignment found with the name of {exercise}"
-    
-    df=pd.DataFrame(items)
-    df['question'] = pd.to_numeric(df['question'])
+    quizzes = list(quiz_container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
-    if not df.empty:
-        # Ensure 'datetime' is in the DataFrame and properly formatted
-        df['datetime'] = pd.to_datetime(df['datetime'])
+    if not quizzes:
+        return jsonify({"message": "No quizzes found."}), 404
 
-        # Add quarter and year columns
-        df['quarter'] = df['datetime'].dt.quarter
-        df['year'] = df['datetime'].dt.year
+    # Aggregate progress data for each class
+    progress_data = {}
+    for quiz in quizzes:
+        class_name = quiz.get("class")
+        module = quiz.get("module", "Unknown")
+        questions = quiz.get("questions", [])
+        partition_key = f"{class_name}_{module}"
 
-        # Filter out rows with NaN in 'quarter' or 'year'
-        df = df.dropna(subset=['quarter', 'year'])
+        # Fetch answers for the corresponding quiz
+        answer_query = """
+            SELECT c.question, c.correct FROM c
+            WHERE c.PartitionKey = @partition_key
+        """
+        answer_parameters = [{"name": "@partition_key", "value": partition_key}]
+        answers = list(answer_container.query_items(
+            query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True
+        ))
 
-        # Generate the table for correctness (1 = right, 0 = wrong) and total score
-        df_correct = df.copy().groupby(['team', 'question']).agg({'correct': 'max'}).reset_index()
-        table_correct = df_correct.pivot_table(index='team', columns='question', values='correct').reset_index()
-        table_correct['score'] = table_correct.iloc[:, 1:].sum(axis=1)  # Calculate total score
-        table_correct = table_correct.fillna(0)  # Replace NaN with 0
-        table_correct.columns.name = None  # Remove multi-index header
+        # Calculate distinct questions attempted and correctly answered
+        questions_attempted = {answer["question"] for answer in answers}
+        correct_questions = {answer["question"] for answer in answers if answer.get("correct", 0) == 1}
 
-        # Add quarter and year to the correctness table
-        table_correct = table_correct.merge(
-            df[['team', 'quarter', 'year']].drop_duplicates(),
-            on='team',
-            how='left'
-        )
+        total_questions = len(questions)
+        num_attempted = len(questions_attempted)
+        num_correct = len(correct_questions)
 
-        # Generate the table for total attempts
-        df_attempts = df.copy().groupby(['team', 'question'])['answer'].count().reset_index()
-        table_attempts = df_attempts.pivot_table(index='team', columns='question', values='answer').reset_index()
-        table_attempts = table_attempts.fillna(0)  # Replace NaN with 0
-        table_attempts.columns.name = None  # Remove multi-index header
+        if class_name not in progress_data:
+            progress_data[class_name] = {
+                "class": class_name,
+                "overall_progress": 0,
+                "overall_correctness": 0,
+                "modules": {},
+                "total_questions": 0,
+                "questions_attempted": 0,
+                "questions_correct": 0
+            }
 
-        # Add quarter and year to the attempts table
-        table_attempts = table_attempts.merge(
-            df[['team', 'quarter', 'year']].drop_duplicates(),
-            on='team',
-            how='left'
-        )
+        # Add module data
+        if module not in progress_data[class_name]["modules"]:
+            progress_data[class_name]["modules"][module] = {
+                "module": module,
+                "total_questions": 0,
+                "questions_attempted": 0,
+                "questions_correct": 0
+            }
 
-        return render_template(
-            "exercise_review.html",
-            title='Exercise Review',
-            user=session.get("user"),
-            table_correct=table_correct,
-            table_attempts=table_attempts,
-            exercise=exercise
-        )
+        progress_data[class_name]["modules"][module]["total_questions"] += total_questions
+        progress_data[class_name]["modules"][module]["questions_attempted"] += num_attempted
+        progress_data[class_name]["modules"][module]["questions_correct"] += num_correct
+
+        progress_data[class_name]["total_questions"] += total_questions
+        progress_data[class_name]["questions_attempted"] += num_attempted
+        progress_data[class_name]["questions_correct"] += num_correct
+
+    # Calculate overall progress and correctness
+    for class_data in progress_data.values():
+        total_questions = class_data["total_questions"]
+        total_questions_attempted = class_data["questions_attempted"]
+        total_questions_correct = class_data["questions_correct"]
+
+        class_data["overall_progress"] = round((total_questions_attempted / total_questions) * 100, 2) if total_questions else 0
+        class_data["overall_correctness"] = round((total_questions_correct / total_questions_attempted) * 100, 2) if total_questions_attempted else 0
+
+        # Convert modules dictionary to a list
+        for module_data in class_data["modules"].values():
+            module_data["module_progress"] = round((module_data["questions_attempted"] / module_data["total_questions"]) * 100, 2) if module_data["total_questions"] else 0
+            module_data["module_correctness"] = round((module_data["questions_correct"] / module_data["questions_attempted"]) * 100, 2) if module_data["questions_attempted"] else 0
+
+        class_data["modules"] = list(class_data["modules"].values())
+
+    return jsonify(list(progress_data.values())), 200
+
+
 
 @classroom_bp.route("/exercise_review_log/<exercise>/<questionnum>")
 def exercise_review_open(exercise,questionnum):
