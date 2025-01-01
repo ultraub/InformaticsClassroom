@@ -16,8 +16,8 @@ from markupsafe import escape
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
-DATABASE = Config.DATABASE
-#DATABASE = 'bids-class'
+#DATABASE = Config.DATABASE
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -891,94 +891,188 @@ def submit_answers():
         "feedback": feedback,
     }), result["status"]
 
-
-
-@classroom_bp.route("/assignment/<class_val>/<module>")
-def assignment(class_val, module):
-    """Assignment home"""
-
-    if ich.check_user_session(session) == False:
+@classroom_bp.route("/assignment", methods=["GET"])
+def assignment():
+    """Render the assignment analysis page with class selection."""
+    if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))
-    
-    container=init_cosmos('answer',DATABASE)
-    #Query quizes in cosmosdb to get the structure for this assignment
-    class_val = escape(class_val)
-    module = escape(module)
-    user_name = escape(session['user_name'])
 
-    # RBB 11/30 TODO will need to come back and join to questions, make sure to 
-    # account for possible questions, not just attempted
+    user_id = session['user'].get('preferred_username')
+
+    # Fetch accessible classes from the users table
+    user_container = init_cosmos('users', DATABASE)
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
+
+    if not user_result:
+        return render_template("assignment.html", classes=[], title="Assignment Analysis")
+
+    accessible_classes = user_result[0].get("accessible_classes", [])
+
+    # Validate accessible_classes is a list
+    if not isinstance(accessible_classes, list):
+        accessible_classes = []
+
+    return render_template("assignment.html", classes=accessible_classes, title="Assignment Analysis")
+
+
+@classroom_bp.route("/api/get-modules", methods=["GET"])
+def get_modules():
+    """Retrieve modules for a specific class."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    class_val = request.args.get("class_name")
+    if not class_val:
+        return jsonify({"message": "Class value is required."}), 400
+
+    user_id = session['user'].get('preferred_username')
+
+    # Check if the user has access to the requested class
+    user_container = init_cosmos('users', DATABASE)
+    user_query = "SELECT c.accessible_classes FROM c WHERE c.id = @user_id"
+    user_parameters = [{"name": "@user_id", "value": user_id}]
+    user_result = list(user_container.query_items(
+        query=user_query, parameters=user_parameters, enable_cross_partition_query=True
+    ))
+
+    if not user_result:
+        return jsonify({"message": "No accessible classes found."}), 404
+
+    accessible_classes = user_result[0].get("accessible_classes", [])
+    if class_val not in accessible_classes:
+        return jsonify({"message": f"You do not have access to class {class_val}."}), 403
+
+    # Fetch modules for the accessible class
+    quiz_container = init_cosmos('quiz', DATABASE)
     query = """
-        SELECT
-            c.PartitionKey, 
-            c.course, 
-            c.module, 
-            c.answer, 
+        SELECT DISTINCT c.module FROM c
+        WHERE c.class = @class_val
+    """
+    parameters = [{"name": "@class_val", "value": class_val}]
+    modules = [quiz["module"] for quiz in quiz_container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True)]
+
+    return jsonify({"modules": modules}), 200
+
+@classroom_bp.route("/api/analyze-assignment", methods=["POST"])
+def analyze_assignment():
+    """Analyze the selected class and module with layered breakdowns."""
+    if not ich.check_user_session(session):
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.json
+    print("Payload received:", data)
+
+    class_name = escape(data.get("class_name", "").strip().lower())
+    module_number = data.get("module_number", "").strip()
+
+    if not class_name or not module_number:
+        return jsonify({"message": "Class and module are required."}), 400
+
+    try:
+        module_number = int(module_number)
+    except ValueError:
+        return jsonify({"message": "Module must be a valid number."}), 400
+
+    quiz_container = init_cosmos('quiz', DATABASE)
+    quiz_query = "SELECT * FROM c WHERE c.class = @class_name AND c.module = @module_number"
+    quiz_parameters = [
+        {"name": "@class_name", "value": class_name},
+        {"name": "@module_number", "value": module_number}
+    ]
+    quiz = list(quiz_container.query_items(query=quiz_query, parameters=quiz_parameters, enable_cross_partition_query=True))
+
+    if not quiz:
+        return jsonify({"message": f"No quiz found for class {class_name} and module {module_number}."}), 404
+
+    active_questions = {str(q["question_num"]) for q in quiz[0].get("questions", [])}
+
+    container = init_cosmos('answer', DATABASE)
+    query = """
+        SELECT 
             c.team, 
             c.question, 
-            c.correct,
-            (c.datetime = null) ? c.Timestamp : c.datetime datetime    
+            c.answer, 
+            c.correct, 
+            c.module, 
+            c.datetime 
         FROM c 
-        where c.course = @class_val
-        and c.module = @module
-        and c.team = @user_name
+        WHERE LOWER(c.course) = LOWER(@class_name) AND c.module = @module_number
     """
-
     parameters = [
-        {
-            "name" : "@class_val",
-            "value" : class_val.lower()
-        },
-        {
-            "name" : "@module",
-            "value" : str(module).lower()
-        },
-        {
-            "name" : "@user_name",
-            "value" : str(user_name).lower()
-        }
+        {"name": "@class_name", "value": class_name},
+        {"name": "@module_number", "value": str(module_number)}
     ]
-    items = list(container.query_items(
-            query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
-        )
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    if not items:
+        return jsonify({"message": f"No answer data found for class {class_name} and module {module_number}."}), 404
+
+    df = pd.DataFrame(items)
+
+    # Handle datetime only if it exists
+    if "datetime" in df.columns:
+        df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+        df["datetime"] = df["datetime"].apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S') if pd.notnull(x) else None)
+        df["quarter"] = pd.to_datetime(df["datetime"], errors="coerce").dt.to_period("Q").astype(str)
+    else:
+        df["datetime"] = None
+        df["quarter"] = None
+
+    df = df[df["question"].isin(active_questions)]
+
+    # Ensure % correct counts only one correct answer per student
+    df["unique_correct"] = df.groupby(["question", "team"])["correct"].transform("max")
+
+    # Calculate unique students who answered correctly
+    correct_students = df[df["correct"] == 1].groupby("question")["team"].nunique()
+
+    # Calculate total unique students who attempted the question
+    total_students = df.groupby("question")["team"].nunique()
+
+    # Calculate attempt counts for each question
+    attempt_count = df.groupby("question")["answer"].count()
+
+    # Combine results into a DataFrame
+    question_summary = pd.DataFrame({
+        "correct_students": correct_students,
+        "total_students": total_students,
+        "attempt_count": attempt_count
+    }).reset_index()
+
+    # Calculate percent correct
+    question_summary["percent_correct"] = round(
+        (question_summary["correct_students"] / question_summary["total_students"]) * 100, 2
     )
 
-    if len(items)==0:
-        return f"No assignment found for class {class_val} and module {module}"
-
-    df=pd.DataFrame(items)
-
-    # rbb we'll check to see if something is returned at all, and if it is, flag
-    # where it has been attempted 
-    attempted = True
-    if not df.empty:
-        df=df[df['PartitionKey']==f"{class_val.lower()}_{module}"]        
-    if df.empty:
-        attempted = False
-
-    # rbb i think this should just be changed to enumerate? prevent missing indices
-    assignment = df.groupby('question').agg({'correct' : ['max','count']})
-    df1=pd.DataFrame(assignment).reset_index()
-    df1.columns = ["_".join(a) for a in df1.columns.to_flat_index()]
-    df1.columns = ['Question Number', 'Correct', 'Attempt Count']
-    
-    qnum, anum = df1['Question Number'].count(), df1['Correct'].sum()
-   # df1.sort_values('question',inplace=True)
-    #df1.reset_index(drop=True,inplace=True)
-
-    # rbb 8/18 do we need to close the connection?
-    return render_template(
-        "assignment.html",
-        title='Assignment',
-        user=session.get("user"),
-        table=df1,
-        class_val=class_val,
-        module=module,
-        qnum=qnum,
-        anum=anum
+    # Calculate average attempts per student
+    question_summary["avg_attempts"] = round(
+        question_summary["attempt_count"] / question_summary["total_students"], 2
     )
+
+    student_attempts = df.groupby(["question", "team"]).agg(
+        attempts=("answer", "count"),
+        correct=("unique_correct", "max")
+    ).reset_index()
+
+    attempt_details = {}
+    for question, group in df.groupby("question"):
+        attempt_details[question] = group.groupby("team").apply(
+            lambda x: x[["answer", "correct", "datetime"]].to_dict(orient="records")
+        ).to_dict()
+
+    question_summary["student_breakdown"] = question_summary["question"].map(
+        lambda q: student_attempts[student_attempts["question"] == q].to_dict(orient="records")
+    )
+    question_summary["details"] = question_summary["question"].map(attempt_details)
+
+    return jsonify({
+        "module_summary": question_summary.to_dict(orient="records")
+    }), 200
+
 
 @classroom_bp.route("/api/exercise-review", methods=["GET"])
 def exercise_review():
