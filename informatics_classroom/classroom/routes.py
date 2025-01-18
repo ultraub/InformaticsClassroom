@@ -85,7 +85,13 @@ def get_user_role(user_id = None):
     return None
 
 # get all accessible classes for a user (not owned classes)
-def get_classes_for_user(user_id = None):
+def get_classes_for_user(user_id = None, include_owned = 0):
+
+    if include_owned:
+        quizzes = get_quizzes_for_user(user_id)
+        accessible_classes = list({ quiz["class"] for quiz in quizzes })
+        return accessible_classes
+    
     users = get_current_user()
 
     accessible_classes = users[0].get("accessible_classes", [])
@@ -111,7 +117,7 @@ def get_quizzes_for_user(user_id = None):
 
     # Combine conditions to filter quizzes by ownership or class access
     query = """
-        SELECT * FROM c
+        SELECT DISTINCT c.class, c.module FROM c
         WHERE c.owner = @user_id
         OR ARRAY_CONTAINS(@accessible_classes, c.class)
     """
@@ -177,6 +183,7 @@ def generate_token_page():
 
 def has_class_access(user_id, class_val):
     accessible_classess = get_classes_for_user(user_id)
+    print(accessible_classess)
     return class_val in accessible_classess
 
 @classroom_bp.route("/create-quiz", methods=["GET"])
@@ -213,17 +220,8 @@ def exercise_review_page():
     """Render the Exercise Review page."""
     if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))  # Redirect to login if not authorized
-
-    user_id = session['user'].get('preferred_username')
-
-    accessible_classes = get_classes_for_user(user_id)
-
-    # Validate that the accessible_classes is a list
-    if not isinstance(accessible_classes, list):
-        accessible_classes = []
-
     # Render the HTML with the accessible classes
-    return render_template("exercise_review.html", classes=accessible_classes, title="Exercise Review")
+    return render_template("exercise_review.html", classes=get_classes_for_user(), title="Exercise Review")
 
 
 # --- API ROUTES ---
@@ -434,7 +432,6 @@ def create_quiz():
     set_object(quiz, 'quiz')
 
     return jsonify({"message": "Quiz created successfully", "quiz_id": quiz_id}), 201
-
 
 @classroom_bp.route("/api/manage-user", methods=["POST"])
 def manage_user():
@@ -662,7 +659,6 @@ def get_session_quizzes():
     quizzes = get_quizzes_for_user()
     return jsonify({"quizzes": quizzes}), 200
 
-
 def process_answers(token, answers):
     """Validate and store multiple answers."""
     # Validate token
@@ -724,7 +720,6 @@ def process_answers(token, answers):
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
 
-
 def process_answers_session(class_val, module_val, team, answers):
     """Validate and store multiple answers based on session access."""
     # Fetch all questions for the quiz
@@ -777,7 +772,6 @@ def process_answers_session(class_val, module_val, team, answers):
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
 
-
 @classroom_bp.route("/submit-answer", methods=['POST'])
 def submit_answer():
     """Handle submission of a single answer."""
@@ -803,10 +797,6 @@ def submit_answer():
         "message": feedback.get("message", "Processed successfully"),
         "correct": feedback.get("correct", False),
     }), result["status"]
-
-
-
-
 
 @classroom_bp.route("/api/submit-answers", methods=["POST"])
 def submit_answers():
@@ -839,7 +829,7 @@ def assignment():
     if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))
 
-    accessible_classes = get_quizzes_for_user()
+    accessible_classes = get_classes_for_user()
 
     # Validate accessible_classes is a list
     if not isinstance(accessible_classes, list):
@@ -847,9 +837,8 @@ def assignment():
 
     return render_template("assignment.html", classes=accessible_classes, title="Assignment Analysis")
 
-
 @classroom_bp.route("/api/get-modules", methods=["GET"])
-def get_modules():
+def get_modules(include_owned = 0):
     """Retrieve modules for a specific class."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
@@ -858,8 +847,8 @@ def get_modules():
     if not class_val:
         return jsonify({"message": "Class value is required."}), 400
 
-    accessible_classes = get_quizzes_for_user()
-
+    accessible_classes = get_classes_for_user(include_owned=include_owned)
+    print(accessible_classes)
     if class_val not in accessible_classes:
         return jsonify({"message": f"You do not have access to class {class_val}."}), 403
 
@@ -875,7 +864,6 @@ def analyze_assignment():
         return jsonify({"message": "Unauthorized"}), 401
 
     data = request.json
-    print("Payload received:", data)
 
     class_name = escape(data.get("class_name", "").strip().lower())
     module_number = data.get("module_number", "").strip()
@@ -982,9 +970,6 @@ def analyze_assignment():
     return jsonify({
         "module_summary": question_summary.to_dict(orient="records")
     }), 200
-
-
-
 
 @classroom_bp.route("/api/exercise-review", methods=["GET"])
 def exercise_review():
