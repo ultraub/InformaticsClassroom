@@ -17,7 +17,7 @@ from markupsafe import escape
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
 DATABASE = Config.DATABASE
-#DATABASE = 'bids-class'
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -110,17 +110,24 @@ def get_modules_for_class(class_val):
     return modules
 
 # primary quiz access route for gathering all classes a user should have access to
-def get_quizzes_for_user(user_id = None):
+def get_quizzes_for_user(user_id = None, include_answers = 0):
 
     user_id = session['user'].get('preferred_username') if session['user'] else user_id
     container = init_cosmos('quiz', DATABASE)
 
     # Combine conditions to filter quizzes by ownership or class access
-    query = """
-        SELECT DISTINCT c.class, c.module FROM c
-        WHERE c.owner = @user_id
-        OR ARRAY_CONTAINS(@accessible_classes, c.class)
-    """
+    if include_answers:
+        query = """
+            SELECT DISTINCT c.class, c.module, c.questions FROM c
+            WHERE c.owner = @user_id
+            OR ARRAY_CONTAINS(@accessible_classes, c.class)
+        """
+    else:
+        query = """
+            SELECT DISTINCT c.class, c.module FROM c
+            WHERE c.owner = @user_id
+            OR ARRAY_CONTAINS(@accessible_classes, c.class)
+        """
     # Fetch the accessible classes from user data
     accessible_classes = get_classes_for_user(user_id)
     parameters = [
@@ -183,7 +190,6 @@ def generate_token_page():
 
 def has_class_access(user_id, class_val):
     accessible_classess = get_classes_for_user(user_id)
-    print(accessible_classess)
     return class_val in accessible_classess
 
 @classroom_bp.route("/create-quiz", methods=["GET"])
@@ -327,9 +333,15 @@ def get_quiz_content():
                 "correct": bool(answer["correct"]),
             }
 
+    trimmed_questions = []
+
+    for q in quiz.get("questions", []):
+        trimmed_questions.append({
+            "question_num": q.get("question_num")
+        })
     return jsonify({
         "title": quiz.get("title"),
-        "questions": quiz.get("questions", []),
+        "questions": trimmed_questions,
         "recent_answers": recent_answers
     }), 200
 
@@ -848,7 +860,6 @@ def get_modules(include_owned = 0):
         return jsonify({"message": "Class value is required."}), 400
 
     accessible_classes = get_classes_for_user(include_owned=include_owned)
-    print(accessible_classes)
     if class_val not in accessible_classes:
         return jsonify({"message": f"You do not have access to class {class_val}."}), 403
 
@@ -978,7 +989,7 @@ def exercise_review():
         return jsonify({"message": "Unauthorized"}), 401
 
     # Fetch accessible quizzes from /api/view-quizzes logic
-    quizzes = get_quizzes_for_user()
+    quizzes = get_quizzes_for_user(include_answers = 1)
 
     if not quizzes:
         return jsonify({"message": "No quizzes found."}), 404
@@ -987,21 +998,25 @@ def exercise_review():
 
     # Aggregate progress data for each class
     progress_data = {}
+    print(quizzes)
+
     for quiz in quizzes:
         class_name = quiz.get("class")
         module = quiz.get("module", "Unknown")
         questions = quiz.get("questions", [])
         partition_key = f"{class_name}_{module}"
-
         # Create a set of active question numbers
         active_questions = {str(q["question_num"]) for q in questions}
 
         # Fetch answers for the corresponding quiz
         answer_query = """
             SELECT c.question, c.correct FROM c
-            WHERE c.PartitionKey = @partition_key
+            WHERE c.PartitionKey = @partition_key AND c.team = @user_id
         """
-        answer_parameters = [{"name": "@partition_key", "value": partition_key}]
+        answer_parameters = [
+            {"name": "@partition_key", "value": partition_key},
+            {"name": "@user_id", "value": session['user'].get('preferred_username')}
+            ]
         answers = list(answer_container.query_items(
             query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True
         ))
