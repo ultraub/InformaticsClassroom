@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Generate Token{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <h2>Generate Access Token</h2>
@@ -9,10 +10,11 @@
             <select id="class_val" name="class_val" class="form-control" required>
                 <option value="" selected disabled>Select a class</option>
                 {% for class_name in classes %}
-                <option value="{{ class_name }}">{{ class_name }}</option>
+                    <option value="{{ class_name }}">{{ class_name }}</option>
                 {% endfor %}
             </select>
         </div>
+
         <div class="mb-3">
             <label for="module_val" class="form-label">Module</label>
             <select id="module_val" name="module_val" class="form-control" required>
@@ -21,19 +23,30 @@
         </div>
         <button type="submit" class="btn btn-primary">Generate Token</button>
     </form>
+
     <div id="token-output" class="mt-3"></div>
 </div>
 
 <script>
+    // We'll receive something like:
+    // {
+    //   "Math101": ["Module A", "Module B"],
+    //   "Bio201": ["Module X", "Module Y"]
+    // }
     const classModules = JSON.parse('{{ class_modules|safe }}');
 
+    // When class dropdown changes:
     document.getElementById('class_val').addEventListener('change', function () {
-        const classVal = this.value;
+        const classVal = this.value;          // e.g. 'Math101'
         const moduleSelect = document.getElementById('module_val');
+        
+        // Reset the module dropdown
         moduleSelect.innerHTML = '<option value="" selected disabled>Select a module</option>';
 
-        if (classModules[classVal]) {
-            classModules[classVal].forEach(module => {
+        // Fill in the module dropdown for the selected class
+        if (classVal in classModules) {
+            const modulesForClass = classModules[classVal];
+            modulesForClass.forEach(module => {
                 const option = document.createElement('option');
                 option.value = module;
                 option.textContent = module;
@@ -42,6 +55,7 @@
         }
     });
 
+    // When the user submits the form:
     document.getElementById('token-form').addEventListener('submit', function (event) {
         event.preventDefault();
 
