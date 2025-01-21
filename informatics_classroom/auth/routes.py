@@ -2,6 +2,7 @@ from flask_session import Session
 import requests
 from flask import render_template, session, redirect,url_for, request
 from informatics_classroom.auth import auth_bp
+from informatics_classroom.classroom import classroom_bp
 import msal
 from informatics_classroom.config import Config
 
@@ -20,7 +21,9 @@ def index():
     if 'user' in session.keys():
         if 'return_to' in session.keys():
             return redirect(url_for(session['return_to'], exercise=session['exercise']))
-    return render_template('index.html', user=session["user"], version=msal.__version__)
+    #return render_template('index.html', user=session["user"], version=msal.__version__)
+    return redirect(url_for("classroom_bp.landingpage"))
+
 
 @auth_bp.route("/login")
 def login():

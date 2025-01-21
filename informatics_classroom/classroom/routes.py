@@ -204,6 +204,10 @@ def modify_quiz_page():
     """Render the modify quiz page."""
     if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))
+
+    if not (is_instructor() or is_admin()):
+        return redirect(url_for("classroom_bp.landingpage"))
+    
     return render_template("modify_quiz.html", title="Modify Quiz")
 
 @classroom_bp.route("/submit-answers", methods=["GET"])
@@ -399,6 +403,9 @@ def create_quiz():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
+    if not is_admin() or is_instructor():
+        return jsonify({"message": "Unauthorized"}), 401
+    
     data = request.json
     quiz_title = data.get('quiz_title')
     description = data.get('description')
@@ -452,21 +459,25 @@ def manage_user():
     #or not is_admin(session["user"]):
         return jsonify({"message": "Unauthorized"}), 401
 
-
-    user_id = session['user'].get('preferred_username')
-    role = get_user_role()
-
-    data = request.json
-    class_val = data.get("class_val")
-
     user = get_current_user()
 
-    user["role"] = role
+    if not is_admin() or is_instructor():
+        return jsonify({"message": "Unauthorized"}), 401
 
-    if class_val and class_val not in user["accessible_classes"]:
-        user["accessible_classes"].append(class_val)
+    data = request.json
 
-    set_object(user, 'users')
+    user_id = data.get("user_id")
+    role = get_user_role(user_id = user_id)
+    class_val = data.get("class_val")
+    role = data.get("role")
+
+    if (role and (role != user[0]['role'])):
+        user[0]['role'] = role
+
+    if class_val and class_val not in user[0]["accessible_classes"]:
+        user[0]["accessible_classes"].append(class_val)
+
+    set_object(user[0], 'users')
 
     return jsonify({"message": f"User {user_id} updated successfully"}), 200
 
@@ -477,6 +488,9 @@ def modify_quiz():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
+    if not is_admin() or is_instructor():
+        return jsonify({"message": "Unauthorized"}), 401
+    
     data = request.json
     quiz_id = data.get("quiz_id")
     questions = data.get("questions", [])  # Accepting the entire questions array
@@ -601,6 +615,9 @@ def assign_role():
     if not session.get("user") or not is_admin(session['user']):
         return jsonify({"message": "Unauthorized"}), 401
 
+    if not is_admin() or is_instructor():
+        return jsonify({"message": "Unauthorized"}), 401
+    
     data = request.json
     user_id = data.get('user_id')
     role = data.get('role')
@@ -640,17 +657,17 @@ def check_role():
 
 # Permissions Middleware
 def is_admin(user=None):
-    if get_user_role(user=user) == 'Admin':
+    if get_user_role(user_id=user) == 'Admin':
         return True
     return False
 
 def is_instructor(user=None):
-    if get_user_role(user=user) == 'Instructor':
+    if get_user_role(user_id=user) == 'Instructor':
         return True
     return False
 
 def is_student(user):
-    if get_user_role(user=user) == 'Student':
+    if get_user_role(user_id=user) == 'Student':
         return True
     return False
 
@@ -874,6 +891,9 @@ def analyze_assignment():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
+    if not is_admin() or is_instructor():
+        return jsonify({"message": "Unauthorized"}), 401
+    
     data = request.json
 
     class_name = escape(data.get("class_name", "").strip().lower())
