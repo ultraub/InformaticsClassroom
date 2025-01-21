@@ -21,6 +21,14 @@ DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
+@classroom_bp.context_processor
+def inject_roles():
+    # returns dictionary of items automatically available in Jinja2 templates
+    return {
+        'is_admin': is_admin(),
+        'is_instructor': is_instructor()
+    }
+
 def load_data_from_cosmos(container_name, query, parameters):
     """Load data from Cosmos DB using query and parameters."""
     container = init_cosmos(container_name, DATABASE)
@@ -1018,7 +1026,6 @@ def exercise_review():
 
     # Aggregate progress data for each class
     progress_data = {}
-    print(quizzes)
 
     for quiz in quizzes:
         class_name = quiz.get("class")

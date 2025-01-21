@@ -23,13 +23,22 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/home">Home</a>
                     </li>
-                    <!-- Assignments -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/assignment">Assignments</a>
-                    </li>
                     <!-- Exercise Review -->
                     <li class="nav-item">
                         <a class="nav-link" href="/exercise-review">Exercise Review</a>
+                    </li>
+                    <!-- Answer Quiz -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/submit-answers">Answer Quiz</a>
+                    </li>
+                    <!-- Generate Token -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/generate-token">Generate Token</a>
+                    </li>
+                    {% if is_admin or is_instructor %}
+                    <!-- Assignments -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assignment">Assignments</a>
                     </li>
                     <!-- Modify Permissions -->
                     <li class="nav-item">
@@ -43,14 +52,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/modify-quiz">Modify Quiz</a>
                     </li>
-                    <!-- Answer Quiz -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/submit-answers">Answer Quiz</a>
-                    </li>
-                    <!-- Generate Token -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/generate-token">Generate Token</a>
-                    </li>
+                    {% endif %}
                     <!-- Logout -->
                     <li class="nav-item">
                         <a class="nav-link" href="/logout">Logout</a>
