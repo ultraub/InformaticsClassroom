@@ -78,7 +78,10 @@
                     classes[selectedClass].forEach(module => {
                         const option = document.createElement("option");
                         option.value = module.module;
-                        option.textContent = `Module ${module.module} (${module.title})`;
+                        // getting rid of this until we have titles for modules
+                        //option.textContent = `Module ${module.module} (${module.title})`;
+                        option.textContent = `Module ${module.module}`;
+
                         moduleSelect.appendChild(option);
                     });
 
