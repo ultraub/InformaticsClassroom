@@ -320,7 +320,6 @@ def get_quiz_content():
     class_val = request.args.get("class_val")
     module_val = request.args.get("module_val")
     team = session['user'].get('preferred_username').split('@')[0]
-    print(team)
 
     if not class_val or not module_val:
         return jsonify({"message": "Class and module values are required."}), 400
@@ -338,12 +337,12 @@ def get_quiz_content():
     # Map the most recent answers per question
     recent_answers = {}
     for answer in answers:
-        question_num = answer["question"]
-        if question_num not in recent_answers:
-            recent_answers[question_num] = {
-                "answer": answer["answer"],
-                "correct": bool(answer["correct"]),
-            }
+        question_num = str(answer["question"])  # Force it to a string
+        recent_answers[question_num] = {
+            "answer": answer["answer"],
+            "correct": bool(answer["correct"]),
+        }
+
 
     trimmed_questions = []
 
@@ -351,6 +350,7 @@ def get_quiz_content():
         trimmed_questions.append({
             "question_num": q.get("question_num")
         })
+
     return jsonify({
         "title": quiz.get("title"),
         "questions": trimmed_questions,
@@ -694,6 +694,9 @@ def is_student(user):
 
 @classroom_bp.route('/home')
 def landingpage():
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+    
     return render_template('home.html',title='Home')
 
 @classroom_bp.route("/quiz",methods=['GET','POST'])
@@ -921,8 +924,8 @@ def analyze_assignment():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
-    if not is_admin() or is_instructor():
-        return jsonify({"message": "Unauthorized"}), 402
+    if not (is_admin() or is_instructor()):
+        return jsonify({"message": "Unauthorized"}), 401
     
     data = request.json
 
