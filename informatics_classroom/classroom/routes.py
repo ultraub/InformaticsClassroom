@@ -38,7 +38,7 @@ def load_data_from_cosmos(container_name, query, parameters):
 
 def get_current_user(user_id = None):
     # update to make sure this is checked to exist
-    user_id = session['user'].get('preferred_username') if session['user'] else user_id
+    user_id = user_id if user_id else session['user'].get('preferred_username')
     container = init_cosmos('users', DATABASE)
     query = "SELECT * FROM c WHERE c.id = @user_id"
     parameters = [{"name": "@user_id", "value": user_id}]
@@ -467,25 +467,38 @@ def manage_user():
     #or not is_admin(session["user"]):
         return jsonify({"message": "Unauthorized"}), 401
 
-    user = get_current_user()
 
-    if not is_admin() or is_instructor():
+    if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
 
     data = request.json
 
     user_id = data.get("user_id")
-    role = get_user_role(user_id = user_id)
+    user = get_current_user(user_id = user_id)
+
+    if user:
+        user = user[0]
+        user_role = user['role']
+    else:
+        user = dict()
+        user["id"] = user_id
+        user["userId"] = user_id
+        user["full_name"] = ''
+        user["email"] = ''
+        user["accessible_classes"] = []
+        user['role'] = ''
+        user_role = ''
+
     class_val = data.get("class_val")
     role = data.get("role")
 
-    if (role and (role != user[0]['role'])):
-        user[0]['role'] = role
+    if (role and (role != user_role)):
+        user['role'] = role
 
-    if class_val and class_val not in user[0]["accessible_classes"]:
-        user[0]["accessible_classes"].append(class_val)
+    if class_val and class_val not in user["accessible_classes"]:
+        user["accessible_classes"].append(class_val)
 
-    set_object(user[0], 'users')
+    set_object(user, 'users')
 
     return jsonify({"message": f"User {user_id} updated successfully"}), 200
 
@@ -824,6 +837,13 @@ def submit_answer():
 
     if token:
         # Token-based processing
+        message, status_code = get_and_validate_token(token=token)
+        if status_code != 200:
+            return jsonify({
+                "message" : message, 
+                "correct" : False,
+                "success" : False
+            }), 401
         result = process_answers(token, {question_num: answer_num})
     else:
         # Session-based processing
@@ -833,7 +853,9 @@ def submit_answer():
     return jsonify({
         "message": feedback.get("message", "Processed successfully"),
         "correct": feedback.get("correct", False),
+        "success" : True
     }), result["status"]
+    #return str(feedback.get("correct", False)), 200
 
 @classroom_bp.route("/api/submit-answers", methods=["POST"])
 def submit_answers():
