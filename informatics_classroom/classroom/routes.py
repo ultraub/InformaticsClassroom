@@ -320,6 +320,7 @@ def get_quiz_content():
     class_val = request.args.get("class_val")
     module_val = request.args.get("module_val")
     team = session['user'].get('preferred_username').split('@')[0]
+    print(team)
 
     if not class_val or not module_val:
         return jsonify({"message": "Class and module values are required."}), 400
@@ -921,7 +922,7 @@ def analyze_assignment():
         return jsonify({"message": "Unauthorized"}), 401
 
     if not is_admin() or is_instructor():
-        return jsonify({"message": "Unauthorized"}), 401
+        return jsonify({"message": "Unauthorized"}), 402
     
     data = request.json
 

@@ -13,9 +13,9 @@ def check_user_session(session):
             if not session.get("user"):
                 #Test if user session is set
                 return False
-            if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
+            #if not session['user'].get('preferred_username').split('@')[1][:2]==Keys.auth_domain:
                 #Test if authenticated user is coming from an authorized domain
-                return False
+            #    return False
         except:
             session.clear()
             return False
