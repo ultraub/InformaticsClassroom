@@ -37,7 +37,7 @@ def load_data_from_cosmos(container_name, query, parameters):
 
 def get_current_user(user_id = None):
     # update to make sure this is checked to exist
-    user_id = user_id if user_id else session['user'].get('preferred_username')
+    user_id = user_id if user_id else session['user'].get('preferred_username').split('@')[0]
     container = init_cosmos('users', DATABASE)
     query = "SELECT * FROM c WHERE c.id = @user_id"
     parameters = [{"name": "@user_id", "value": user_id}]
@@ -119,7 +119,7 @@ def get_modules_for_class(class_val):
 # primary quiz access route for gathering all classes a user should have access to
 def get_quizzes_for_user(user_id = None, include_answers = 0):
 
-    user_id = session['user'].get('preferred_username') if session['user'] else user_id
+    user_id = session['user'].get('preferred_username').split('@')[0] if session['user'] else user_id
     container = init_cosmos('quiz', DATABASE)
 
     # Combine conditions to filter quizzes by ownership or class access
@@ -319,7 +319,7 @@ def get_quiz_content():
 
     class_val = request.args.get("class_val")
     module_val = request.args.get("module_val")
-    team = session['user'].get('preferred_username')
+    team = session['user'].get('preferred_username').split('@')[0]
 
     if not class_val or not module_val:
         return jsonify({"message": "Class and module values are required."}), 400
@@ -419,7 +419,7 @@ def create_quiz():
     class_val = data.get('class')
     module = data.get('module')
     questions = data.get('questions', [])
-    created_by = session['user'].get('preferred_username')
+    created_by = session['user'].get('preferred_username').split('@')[0]
 
     if not quiz_title or not description or not class_val or module is None:
         return jsonify({"message": "Invalid input"}), 400
@@ -518,7 +518,7 @@ def modify_quiz():
     if not quiz_id or not isinstance(questions, list):
         return jsonify({"message": "Missing or invalid required fields"}), 400
 
-    updated_by = session['user'].get('preferred_username')
+    updated_by = session['user'].get('preferred_username').split('@')[0]
     update_datetime = str(dt.datetime.now(dt.timezone.utc))
 
     quizzes = get_quiz_by_id(quiz_id=quiz_id)
@@ -825,7 +825,7 @@ def process_answers_session(class_val, module_val, team, answers):
 def submit_answer():
     """Handle submission of a single answer."""
     token = request.form.get("token")  # Optional for token-based submissions
-    team = session['user'].get('preferred_username') if session.get('user') else None
+    team = session['user'].get('preferred_username').split('@')[0] if session.get('user') else None
     question_num = request.form.get("question_num")
     answer_num = request.form.get("answer_num")
     class_val = request.form.get("class_val") if request.form.get("class_val") else request.form.get("class")  # New for session-based submissions
@@ -862,7 +862,7 @@ def submit_answers():
     data = request.json
 
     token = data.get("token")
-    team = session['user'].get('preferred_username')
+    team = session['user'].get('preferred_username').split('@')[0]
     answers = data.get("answers", {})
 
     if not token or not team:
@@ -1063,7 +1063,7 @@ def exercise_review():
         """
         answer_parameters = [
             {"name": "@partition_key", "value": partition_key},
-            {"name": "@user_id", "value": session['user'].get('preferred_username')}
+            {"name": "@user_id", "value": session['user'].get('preferred_username').split('@')[0]}
             ]
         answers = list(answer_container.query_items(
             query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True
