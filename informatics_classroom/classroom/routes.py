@@ -829,7 +829,7 @@ def process_answers_session(class_val, module_val, team, answers):
 def submit_answer():
     """Handle submission of a single answer."""
     token = request.form.get("token")  # Optional for token-based submissions
-    team = session['user'].get('preferred_username').split('@')[0] if session.get('user') else None
+    team = session['user'].get('preferred_username').split('@')[0] if session.get('user') else request.form.get("team")
     question_num = request.form.get("question_num")
     answer_num = request.form.get("answer_num")
     class_val = request.form.get("class_val") if request.form.get("class_val") else request.form.get("class")  # New for session-based submissions
