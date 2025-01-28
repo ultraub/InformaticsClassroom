@@ -18,7 +18,6 @@ import requests
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
 DATABASE = Config.DATABASE
-DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
