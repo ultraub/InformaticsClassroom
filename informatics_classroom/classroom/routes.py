@@ -13,10 +13,12 @@ import uuid
 import json
 import datetime as dt
 from markupsafe import escape
+import requests
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
 DATABASE = Config.DATABASE
+DATABASE = 'bids-class'
 
 ClassGroups=sorted(['PMAP','CDA','FHIR','OHDSI'])
 
@@ -411,7 +413,7 @@ def create_quiz():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
-    if not is_admin() or is_instructor():
+    if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
     
     data = request.json
@@ -509,7 +511,7 @@ def modify_quiz():
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
-    if not is_admin() or is_instructor():
+    if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
     
     data = request.json
@@ -541,6 +543,7 @@ def modify_quiz():
 
         if question_num in existing_questions:
             original = existing_questions[question_num]
+            original["open"] = original["open"] if "open" in original.keys() else False
             if original["correct_answer"] != correct_answer or original["open"] != open_flag:
                 changes.append({
                     "question_num": question_num,
@@ -636,7 +639,7 @@ def assign_role():
     if not session.get("user") or not is_admin(session['user']):
         return jsonify({"message": "Unauthorized"}), 401
 
-    if not is_admin() or is_instructor():
+    if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
     
     data = request.json
@@ -960,7 +963,7 @@ def analyze_assignment():
         WHERE LOWER(c.course) = LOWER(@class_name) AND c.module = @module_number
     """
     parameters = [
-        {"name": "@class_name", "value": class_name},
+        {"name": "@class_name", "value": str(class_name)},
         {"name": "@module_number", "value": str(module_number)}
     ]
     items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
@@ -978,10 +981,12 @@ def analyze_assignment():
         df["datetime"] = None
 
     df = df[df["question"].isin(active_questions)]
+    # Replace NaN (None in Python) with some placeholder and cast to string
+    df["team"] = df["team"].fillna("UnknownTeam").astype(str)
+    df["question"] = df["question"].fillna("UnknownQuestion").astype(str)
 
     # Ensure % correct counts only one correct answer per student
     df["unique_correct"] = df.groupby(["question", "team"])["correct"].transform("max")
-
     # Calculate unique students who answered correctly
     correct_students = df[df["correct"] == 1].groupby("question")["team"].nunique()
 
@@ -1031,6 +1036,7 @@ def analyze_assignment():
     )
     question_summary["details"] = question_summary["question"].map(attempt_details)
 
+    print(question_summary)
     return jsonify({
         "module_summary": question_summary.to_dict(orient="records")
     }), 200
@@ -1127,3 +1133,65 @@ def exercise_review():
         class_data["modules"] = list(class_data["modules"].values())
 
     return jsonify(list(progress_data.values())), 200
+
+
+@classroom_bp.route("/fhir", methods=["GET"])
+def fhir_page():
+    """Render the submit answers page."""
+    if not ich.check_user_session(session):
+        return redirect(url_for("auth_bp.login"))
+    return render_template("fhir.html", title="FHIR Route")
+
+
+@classroom_bp.route('/fhir-call', methods=['POST'])
+def call_fhir():
+    """
+    This route receives a JSON payload with a `url` field.
+    It uses make_fhir_call to get the data from the FHIR endpoint
+    and returns the result as JSON for the AJAX call to display.
+    """
+    data = request.get_json()
+    fhir_url = data['url']
+
+    # Call the function that retrieves FHIR data
+    result_str = make_fhir_call(fhir_url)
+
+    # Convert the JSON string result into a Python dict so we can jsonify it properly
+    # If you want to return a raw string, you can do so, 
+    # but here we convert it back to JSON for a clean JSON response:
+    result_json = json.loads(result_str)
+
+    # Return as JSON
+    return jsonify(result_json)
+
+def get_access_token():
+    url = "https://excite.eastus.cloudapp.azure.com/oauth2/default/token"
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    data = {
+        "grant_type": "password",
+        "user_role": "users",
+        "username": "physician",
+        "password": "Password123!",
+        "client_id": "q8hPK8HZnwUbPraNyilbRZAEwycVN1zfHeQrjGfP9AM",
+        "scope": "openid offline_access api:oemr api:fhir api:port user/allergy.read user/allergy.write user/appointment.read user/appointment.write user/dental_issue.read user/dental_issue.write user/document.read user/document.write user/drug.read user/encounter.read user/encounter.write user/facility.read user/facility.write user/immunization.read user/insurance.read user/insurance.write user/insurance_company.read user/insurance_company.write user/insurance_type.read user/list.read user/medical_problem.read user/medical_problem.write user/medication.read user/medication.write user/message.write user/patient.read user/patient.write user/practitioner.read user/practitioner.write user/prescription.read user/procedure.read user/soap_note.read user/soap_note.write user/surgery.read user/surgery.write user/transaction.read user/transaction.write user/vital.read user/vital.write user/AllergyIntolerance.read user/CareTeam.read user/Condition.read user/Coverage.read user/Encounter.read user/Immunization.read user/Location.read user/Medication.read user/MedicationRequest.read user/Observation.read user/Organization.read user/Organization.write user/Patient.read user/Patient.write user/Practitioner.read user/Practitioner.write user/PractitionerRole.read user/Procedure.read patient/encounter.read patient/patient.read patient/AllergyIntolerance.read patient/CareTeam.read patient/Condition.read patient/Coverage.read patient/Encounter.read patient/Immunization.read patient/MedicationRequest.read patient/Observation.read patient/Patient.read patient/Procedure.read system/Patient.$export",
+    }
+
+    response = requests.post(url, headers=headers, data=data)
+    response.raise_for_status()
+    return response.json()['access_token']
+
+def make_fhir_call(fhir_url):
+    headers = {
+        "Authorization": f"Bearer {get_access_token()}",
+        "accept": "application/json",
+    }
+
+    response = requests.get(fhir_url, headers=headers)
+    response.raise_for_status()
+    # Return raw JSON string (pretty-printed). 
+    # You could also return `response.json()` directly if you prefer.
+    return json.dumps(response.json(), indent=4)

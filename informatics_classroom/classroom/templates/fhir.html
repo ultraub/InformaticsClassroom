@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}FHIR Call{% endblock %}
+{% block content %}
+
+    <h1>Test FHIR Call</h1>
+    <label for="fhirUrl">FHIR URL:</label>
+    <input type="text" id="fhirUrl" style="width:400px;" placeholder="Enter the FHIR endpoint URL" />
+    <button id="callBtn">Call FHIR</button>
+
+    <h2>Response:</h2>
+    <pre id="responseArea"></pre>
+
+    <script>
+        $(document).ready(function() {
+            $('#callBtn').click(function() {
+                var inputUrl = $('#fhirUrl').val();
+
+                // Make AJAX POST request to /fhir-call
+                $.ajax({
+                    url: '/fhir-call',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    data: JSON.stringify({ url: inputUrl }),
+                    success: function(response) {
+                        // `response` will be the JSON data from make_fhir_call
+                        // We can stringify it with indentation for display
+                        $('#responseArea').text(JSON.stringify(response, null, 4));
+                    },
+                    error: function(xhr, status, error) {
+                        $('#responseArea').text("Error: " + error);
+                    }
+                });
+            });
+        });
+    </script>
+
+{% endblock %}
