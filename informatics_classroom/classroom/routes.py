@@ -339,6 +339,9 @@ def get_quiz_content():
     recent_answers = {}
     for answer in answers:
         question_num = str(answer["question"])  # Force it to a string
+
+        if question_num in recent_answers.keys():
+            continue
         recent_answers[question_num] = {
             "answer": answer["answer"],
             "correct": bool(answer["correct"]),
