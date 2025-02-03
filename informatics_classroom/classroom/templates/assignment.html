@@ -1,35 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Assignment Analysis{% endblock %}
+{% block title %}Assignment Analysis with Year Filter{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Assignment Analysis</h2>
+    <h2>Assignment Analysis (By Year)</h2>
 
-    <!-- Class and Module Selection -->
+    <!-- Selection Form -->
     <form id="selection-form" class="mb-4">
-        <div class="row">
-            <div class="col-md-6">
+        <div class="row mb-3">
+            <!-- Class Selection -->
+            <div class="col-md-4">
                 <label for="class-select" class="form-label">Select Class</label>
                 <select id="class-select" name="class_name" class="form-select" required>
                     <option value="" selected disabled>Select a class</option>
-                    {% for class in classes %}
-                    <option value="{{ class }}">{{ class }}</option>
+                    {% for c in classes %}
+                    <option value="{{ c }}">{{ c }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-6">
+
+            <!-- Module Selection -->
+            <div class="col-md-4">
                 <label for="module-select" class="form-label">Select Module</label>
                 <select id="module-select" name="module_number" class="form-select" disabled required>
                     <option value="" selected disabled>Select a module</option>
+                </select>
+            </div>
+
+            <!-- Year Selection -->
+            <div class="col-md-4">
+                <label for="year-select" class="form-label">Select Year</label>
+                <select id="year-select" name="year_filter" class="form-select">
+                    <option value="" selected>All Years</option>
+                    <!-- You can dynamically generate these years from your data or just hardcode a few -->
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
                 </select>
             </div>
         </div>
         <button type="button" id="analyze-btn" class="btn btn-primary mt-3" disabled>Analyze</button>
     </form>
 
-    <!-- Results Section -->
+    <!-- Pivot Tables Section -->
+    <div id="tables-section" class="mt-5 d-none">
+        <h3>Overall Student Performance</h3>
+
+        <!-- Correctness Table -->
+        <h4>Correctness &amp; Score</h4>
+        <div class="table-responsive mb-4">
+            <table id="correctness-table" class="table table-bordered table-striped">
+                <!-- built by JS -->
+            </table>
+        </div>
+
+        <!-- Attempts Table -->
+        <h4>Total Attempts</h4>
+        <div class="table-responsive mb-4">
+            <table id="attempts-table" class="table table-bordered table-striped">
+                <!-- built by JS -->
+            </table>
+        </div>
+    </div>
+
+    <!-- Detailed Breakdown Section -->
     <div id="results" class="mt-5 d-none">
-        <h3>Module Summary</h3>
+        <h3>Question-by-Question Breakdown</h3>
         <div class="accordion" id="module-summary-accordion"></div>
     </div>
 </div>
@@ -37,6 +73,7 @@
 
 {% block scripts %}
 <script>
+    // 1) Load modules after class is selected
     document.getElementById('class-select').addEventListener('change', function () {
         const selectedClass = this.value;
         const moduleSelect = document.getElementById('module-select');
@@ -50,12 +87,11 @@
                     alert("No modules available for the selected class.");
                     return;
                 }
-
                 moduleSelect.innerHTML = '<option value="" selected disabled>Select a module</option>';
-                data.modules.forEach(module => {
+                data.modules.forEach(m => {
                     const option = document.createElement('option');
-                    option.value = module;
-                    option.textContent = `Module ${module}`;
+                    option.value = m;
+                    option.textContent = `Module ${m}`;
                     moduleSelect.appendChild(option);
                 });
                 moduleSelect.disabled = false;
@@ -63,13 +99,47 @@
             .catch(error => alert("Error loading modules: " + error));
     });
 
+    // 2) Enable "Analyze" button after picking a module
     document.getElementById('module-select').addEventListener('change', function () {
         document.getElementById('analyze-btn').disabled = false;
     });
 
+    // Helper to build the pivot table HTML
+    function buildTableHTML(tableId, columns, rows) {
+        const table = document.getElementById(tableId);
+        table.innerHTML = "";
+
+        // THEAD
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+
+        // TBODY
+        const tbody = document.createElement('tbody');
+        rows.forEach(rowData => {
+            const rowTr = document.createElement('tr');
+            rowData.forEach(cellData => {
+                const td = document.createElement('td');
+                td.textContent = cellData;
+                rowTr.appendChild(td);
+            });
+            tbody.appendChild(rowTr);
+        });
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+    }
+
+    // 3) On "Analyze", POST to /api/analyze-assignment with the year filter
     document.getElementById('analyze-btn').addEventListener('click', function () {
         const className = document.getElementById('class-select').value;
         const moduleNumber = document.getElementById('module-select').value;
+        const yearFilter = document.getElementById('year-select').value;  // e.g. "2025" or ""
 
         if (!className || !moduleNumber) {
             alert("Please select both a class and a module.");
@@ -78,43 +148,90 @@
 
         fetch("/api/analyze-assignment", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ class_name: className, module_number: moduleNumber })
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                class_name: className,
+                module_number: moduleNumber,
+                year_filter: yearFilter  // pass the selected year
+            })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status}`);
+        .then(resp => {
+            if (!resp.ok) {
+                throw new Error(`Error: ${resp.status}`);
             }
-            return response.json();
+            return resp.json();
         })
         .then(data => {
+            // 1) Pivot tables
+            const tablesSection = document.getElementById('tables-section');
+            const correctness = data.table_correctness || null;
+            if (correctness && correctness.columns && correctness.rows) {
+                buildTableHTML("correctness-table", correctness.columns, correctness.rows);
+                $('#correctness-table').DataTable({
+                    destroy: true,
+                    responsive: true,
+                    dom: 'Bfrtip',
+                    buttons: ['csv', 'excel', 'pdf', 'print']
+                });
+            }
+
+            const attempts = data.table_attempts || null;
+            if (attempts && attempts.columns && attempts.rows) {
+                buildTableHTML("attempts-table", attempts.columns, attempts.rows);
+                $('#attempts-table').DataTable({
+                    destroy: true,
+                    responsive: true,
+                    dom: 'Bfrtip',
+                    buttons: ['csv', 'excel', 'pdf', 'print']
+                });
+            }
+            tablesSection.classList.remove('d-none');
+
+            // 2) Detailed breakdown
             const results = document.getElementById('results');
             const moduleAccordion = document.getElementById('module-summary-accordion');
 
             if (!data.module_summary || !Array.isArray(data.module_summary)) {
-                alert("No data available for the selected module.");
+                alert("No data available for the selected module/year.");
                 return;
             }
 
             moduleAccordion.innerHTML = data.module_summary.map((question, qIndex) => `
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="question-heading-${qIndex}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#question-collapse-${qIndex}" aria-expanded="false">
-                            Question ${question.question} - ${question.percent_correct}% Correct, Avg Attempts: ${question.avg_attempts}
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#question-collapse-${qIndex}"
+                                aria-expanded="false">
+                            Question ${question.question}
+                            - ${question.percent_correct}% Correct,
+                            Avg Attempts: ${question.avg_attempts}
                         </button>
                     </h2>
                     <div id="question-collapse-${qIndex}" class="accordion-collapse collapse">
                         <div class="accordion-body">
+                            <p>
+                                <strong>Correct Students:</strong> ${question.correct_students} /
+                                <strong>Total Students:</strong> ${question.total_students}
+                                <br/>
+                                <strong>Attempt Count:</strong> ${question.attempt_count}
+                            </p>
                             <h5>Student Breakdown:</h5>
                             <div class="accordion" id="student-accordion-${qIndex}">
-                                ${question.student_breakdown.map((student, sIndex) => `
+                                ${question.student_breakdown.map((st, sIndex) => `
                                     <div class="accordion-item">
                                         <h2 class="accordion-header" id="student-heading-${qIndex}-${sIndex}">
-                                            <button class="accordion-button collapsed ${student.correct ? 'bg-success text-white' : 'bg-danger text-white'}" type="button" data-bs-toggle="collapse" data-bs-target="#student-collapse-${qIndex}-${sIndex}" aria-expanded="false">
-                                                ${student.team} - ${student.attempts} attempts, ${student.correct ? 'Correct' : 'Incorrect'}
+                                            <button class="accordion-button collapsed
+                                                ${st.correct ? 'bg-success text-white' : 'bg-danger text-white'}"
+                                                type="button" data-bs-toggle="collapse"
+                                                data-bs-target="#student-collapse-${qIndex}-${sIndex}"
+                                                aria-expanded="false">
+                                                ${st.team} - ${st.attempts} attempts,
+                                                ${st.correct ? 'Correct' : 'Incorrect'}
                                             </button>
                                         </h2>
-                                        <div id="student-collapse-${qIndex}-${sIndex}" class="accordion-collapse collapse">
+                                        <div id="student-collapse-${qIndex}-${sIndex}"
+                                             class="accordion-collapse collapse">
                                             <div class="accordion-body">
                                                 <table class="table table-bordered">
                                                     <thead>
@@ -125,11 +242,11 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        ${question.details[student.team].map(attempt => `
+                                                        ${(question.details[st.team] || []).map(attempt => `
                                                             <tr>
                                                                 <td>${attempt.answer}</td>
                                                                 <td>${attempt.correct ? 'Yes' : 'No'}</td>
-                                                                <td>${attempt.datetime}</td>
+                                                                <td>${attempt.datetime || ''}</td>
                                                             </tr>
                                                         `).join('')}
                                                     </tbody>

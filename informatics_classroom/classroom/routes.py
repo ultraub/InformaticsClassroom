@@ -14,6 +14,7 @@ import json
 import datetime as dt
 from markupsafe import escape
 import requests
+from flask import flash
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
@@ -74,7 +75,7 @@ def get_user_answers_for_quiz(class_val, module_val, team):
     answer_container = init_cosmos('answer', DATABASE)
     answer_query = """
         SELECT c.question, c.answer, c.correct FROM c
-        WHERE c.PartitionKey = @partition_key AND c.team = @team
+        WHERE c.PartitionKey = @partition_key AND c.team = @team AND IS_DEFINED(c.datetime) AND c.datetime <> null
         ORDER BY c.datetime DESC
     """
     answer_parameters = [
@@ -925,33 +926,31 @@ def get_modules(include_owned = 0):
 
 @classroom_bp.route("/api/analyze-assignment", methods=["POST"])
 def analyze_assignment():
-    """Analyze the selected class and module with layered breakdowns."""
+    """Analyze the selected class and module with layered breakdowns,
+       plus pivot tables for overall correctness & attempts."""
     if not ich.check_user_session(session):
         return jsonify({"message": "Unauthorized"}), 401
 
     if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
     
-    data = request.json
-
+    data = request.json or {}
     class_name = escape(data.get("class_name", "").strip().lower())
     module_number = data.get("module_number", "").strip()
+    year_filter = data.get("year_filter", "").strip()  # e.g. "2025" or ""
 
-    if not class_name or not module_number:
-        return jsonify({"message": "Class and module are required."}), 400
+    # (basic validations for class_name, module_number)...
 
-    try:
-        module_number = int(module_number)
-    except ValueError:
-        return jsonify({"message": "Module must be a valid number."}), 400
-
+    # if we have quiz definitions, do that logic
     quiz = get_quiz(class_val=class_name, module_val=module_number)
-    
     if not quiz:
-        return jsonify({"message": f"No quiz found for class {class_name} and module {module_number}."}), 404
+        return jsonify({
+            "message": f"No quiz found for class {class_name} and module {module_number}."
+        }), 404
 
     active_questions = {str(q["question_num"]) for q in quiz[0].get("questions", [])}
 
+    # Query Cosmos
     container = init_cosmos('answer', DATABASE)
     query = """
         SELECT 
@@ -962,86 +961,181 @@ def analyze_assignment():
             c.module, 
             c.datetime 
         FROM c 
-        WHERE LOWER(c.course) = LOWER(@class_name) AND c.module = @module_number
+        WHERE LOWER(c.course) = LOWER(@class_name) AND c.module = @module_number AND IS_DEFINED(c.datetime) AND c.datetime <> null
+        ORDER BY c.datetime DESC
     """
-    parameters = [
-        {"name": "@class_name", "value": str(class_name)},
+    params = [
+        {"name": "@class_name", "value": class_name},
         {"name": "@module_number", "value": str(module_number)}
     ]
-    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
-
+    items = list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
     if not items:
-        return jsonify({"message": f"No answer data found for class {class_name} and module {module_number}."}), 404
+        return jsonify({
+            "message": f"No answer data found for class {class_name} and module {module_number}."
+        }), 404
 
     df = pd.DataFrame(items)
 
-    # Handle datetime only if it exists
-    if "datetime" in df.columns:
-        df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
-        df["datetime"] = df["datetime"].apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S') if pd.notnull(x) else None)
-    else:
-        df["datetime"] = None
+    df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce", utc=True)
+    # Now df["datetime"] is datetime64[ns, UTC] for all rows.
 
+    # If you need naive datetimes (no tz), you can do:
+    df["datetime"] = df["datetime"].dt.tz_convert(None)
+    df["question"] = df["question"].astype(str)
+
+    # Drop rows where datetime is NaT
+    df = df.dropna(subset=["datetime"])
+
+    # If you have a year filter:
+    if year_filter:
+        try:
+            year_val = int(year_filter)
+            df = df[df["datetime"].dt.year == year_val]
+        except ValueError:
+            pass  # If parsing fails, do nothing or handle differently
+
+    if df.empty:
+        return jsonify({
+            "message": f"No answer data found for class {class_name}, module {module_number}, year {year_filter}."
+        }), 404
+
+    # Then proceed with the rest of your logic:
     df = df[df["question"].isin(active_questions)]
-    # Replace NaN (None in Python) with some placeholder and cast to string
+
     df["team"] = df["team"].fillna("UnknownTeam").astype(str)
     df["question"] = df["question"].fillna("UnknownQuestion").astype(str)
 
-    # Ensure % correct counts only one correct answer per student
+    # Mark if correct for each (question, team)
     df["unique_correct"] = df.groupby(["question", "team"])["correct"].transform("max")
-    # Calculate unique students who answered correctly
+
+    # question-level stats
     correct_students = df[df["correct"] == 1].groupby("question")["team"].nunique()
-
-    # Calculate total unique students who attempted the question
     total_students = df.groupby("question")["team"].nunique()
-
-    # Calculate attempt counts for each question
     attempt_count = df.groupby("question")["answer"].count()
 
-    # Combine results into a DataFrame
     question_summary = pd.DataFrame({
-        "correct_students": correct_students,
-        "total_students": total_students,
-        "attempt_count": attempt_count
-    }).reset_index()
-
-    # Fill NaN values to ensure no division errors
-    question_summary["correct_students"] = question_summary["correct_students"].fillna(0)
-    question_summary["total_students"] = question_summary["total_students"].fillna(0)
-    question_summary["attempt_count"] = question_summary["attempt_count"].fillna(0)
-
-    # Calculate percent correct
-    question_summary["percent_correct"] = round(
-        (question_summary["correct_students"] / question_summary["total_students"].replace(0, np.nan)) * 100, 2
-    ).fillna(0)  # Set percent_correct to 0 if no students attempted the question
-
-    # Calculate average attempts per student
-    question_summary["avg_attempts"] = round(
-        question_summary["attempt_count"] / question_summary["total_students"].replace(0, np.nan), 2
+        "question": correct_students.index,
+        "correct_students": correct_students.values
+    }).merge(
+        total_students.rename("total_students").reset_index(),
+        on="question", how="outer"
+    ).merge(
+        attempt_count.rename("attempt_count").reset_index(),
+        on="question", how="outer"
     ).fillna(0)
 
-    student_attempts = df.groupby(["question", "team"]).agg(
+    question_summary["percent_correct"] = (
+        question_summary["correct_students"] / question_summary["total_students"].replace(0, np.nan) * 100
+    ).fillna(0).round(2)
+
+    question_summary["avg_attempts"] = (
+        question_summary["attempt_count"] / question_summary["total_students"].replace(0, np.nan)
+    ).fillna(0).round(2)
+
+    # Build student breakdown
+    student_attempts = df.groupby(["question","team"], as_index=False).agg(
         attempts=("answer", "count"),
         correct=("unique_correct", "max")
+    )
+
+    # Build attempt details
+    #   attempt_details = { question -> { team -> [ {answer, correct, datetime}, ... ] } }
+    attempt_details = {}
+    for q_val, sub_q in df.groupby("question"):
+        attempt_details[q_val] = {}
+        for t_val, sub_t in sub_q.groupby("team"):
+            attempt_details[q_val][t_val] = sub_t[["answer","correct","datetime"]] \
+                .sort_values("datetime", na_position="first") \
+                .to_dict(orient="records")
+
+    # Attach student breakdown & details
+    def build_student_rows(q):
+        return student_attempts[student_attempts["question"] == q].to_dict(orient="records")
+    
+    question_summary["student_breakdown"] = question_summary["question"].apply(build_student_rows)
+    question_summary["details"] = question_summary["question"].apply(lambda q: attempt_details.get(q, {}))
+
+    # ------------------------------------------
+    # Build the pivot tables for DataTables
+    # ------------------------------------------
+
+    # 1) Correctness pivot
+    #    For each (team, question), take max(correct). 0 or 1.
+    df_correct = df.groupby(["team", "question"], as_index=False)["correct"].max()
+
+    pivot_correct = df_correct.pivot_table(
+        index="team",
+        columns="question",
+        values="correct",
+        fill_value=0
     ).reset_index()
 
-    # Collect all attempts for each student under each question
-    attempt_details = {}
-    for question, group in df.groupby("question"):
-        attempt_details[question] = {
-            team: group[group["team"] == team][["answer", "correct", "datetime"]].to_dict(orient="records")
-            for team in group["team"].unique()
-        }
+    # We only want to keep the 'team' column plus question columns in ascending numeric order.
+    # Suppose your questions are numeric strings like "1", "2", "3"...
+    # Convert them to int for sorting; then reorder columns accordingly.
+    all_columns = list(pivot_correct.columns)  # e.g. ['team', '1', '2', '10']
+    question_cols = [c for c in all_columns if c != "team"]
+    # Sort by integer value (assuming question columns are numeric strings)
+    question_cols_sorted = sorted(question_cols, key=lambda x: int(x))
 
-    question_summary["student_breakdown"] = question_summary["question"].map(
-        lambda q: student_attempts[student_attempts["question"] == q].to_dict(orient="records")
-    )
-    question_summary["details"] = question_summary["question"].map(attempt_details)
+    # Reorder pivot_correct so "team" is first, then question columns
+    pivot_correct = pivot_correct[["team"] + question_cols_sorted]
 
-    print(question_summary)
+    # Add "percent_correct" = (sum of correct columns) / (number of question cols) * 100
+    pivot_correct["percent_correct"] = (
+        pivot_correct[question_cols_sorted].sum(axis=1) / len(question_cols_sorted) * 100
+    ).round(2)
+
+    # Put that at the far right
+    pivot_correct = pivot_correct[["team"] + question_cols_sorted + ["percent_correct"]]
+
+    # Convert to arrays for JSON
+    correctness_cols = pivot_correct.columns.tolist()
+    correctness_rows = pivot_correct.values.tolist()
+
+
+    # 2) Attempts pivot
+    #    For each (team, question), count how many answers (submissions) they made
+    df_attempts = df.groupby(["team", "question"], as_index=False)["answer"].count()
+
+    pivot_attempts = df_attempts.pivot_table(
+        index="team",
+        columns="question",
+        values="answer",
+        fill_value=0
+    ).reset_index()
+
+    # Again, reorder columns
+    all_columns = list(pivot_attempts.columns)  # e.g. ['team', '1', '2', '10']
+    question_cols = [c for c in all_columns if c != "team"]
+    question_cols_sorted = sorted(question_cols, key=lambda x: int(x))
+    pivot_attempts = pivot_attempts[["team"] + question_cols_sorted]
+
+    # Add "avg_attempts" = average across question columns
+    pivot_attempts["avg_attempts"] = (
+        pivot_attempts[question_cols_sorted].mean(axis=1)
+    ).round(2)
+
+    # Put that at the far right
+    pivot_attempts = pivot_attempts[["team"] + question_cols_sorted + ["avg_attempts"]]
+
+    # Convert to arrays for JSON
+    attempts_cols = pivot_attempts.columns.tolist()
+    attempts_rows = pivot_attempts.values.tolist()
+
+    # Finally, return them in your JSON response (along with module_summary)
     return jsonify({
-        "module_summary": question_summary.to_dict(orient="records")
+        "module_summary": question_summary.to_dict(orient="records"),
+        "table_correctness": {
+            "columns": correctness_cols,
+            "rows": correctness_rows
+        },
+        "table_attempts": {
+            "columns": attempts_cols,
+            "rows": attempts_rows
+        }
     }), 200
+
 
 @classroom_bp.route("/api/exercise-review", methods=["GET"])
 def exercise_review():
