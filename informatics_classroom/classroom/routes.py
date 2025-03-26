@@ -747,18 +747,25 @@ def process_answers(token, answers):
 
     # Create a lookup for correct answers
     correct_answers = {str(q["question_num"]): str(q["correct_answer"]) for q in questions}
+    open_answers = {str(q["question_num"]): bool(q["open"]) for q in questions}
 
     # Validate and log answers
     feedback = {}
     attempts = []
     for question_num, answer_num in answers.items():
         correct_answer = correct_answers.get(str(question_num))
-        if correct_answer is None:
+
+        if open_answers.get(str(question_num)):
+            is_correct = True
+            feedback[question_num] = {"correct": is_correct}
+
+        elif correct_answer is None:
             feedback[question_num] = {"correct": False, "message": "Invalid question number"}
             continue
 
-        is_correct = str(correct_answer) == str(answer_num)
-        feedback[question_num] = {"correct": is_correct}
+        else:
+            is_correct = str(correct_answer) == str(answer_num)
+            feedback[question_num] = {"correct": is_correct}
 
         attempts.append({
             'PartitionKey': f"{class_val}_{module_val}",
@@ -767,6 +774,7 @@ def process_answers(token, answers):
             'module': module_val,
             'team': team,
             'question': question_num,
+            'open': open_answers.get(str(question_num)),
             'answer': answer_num,
             'datetime': str(dt.datetime.now(dt.timezone.utc)),
             'correct': int(is_correct),
@@ -784,7 +792,7 @@ def process_answers_session(class_val, module_val, team, answers):
     # Fetch all questions for the quiz
     container = init_cosmos('quiz', DATABASE)
     query = """
-        SELECT c.question_num, c.correct_answer FROM quiz q
+        SELECT c.question_num, c.correct_answer, c.open FROM quiz q
         JOIN c IN q.questions
         WHERE q.class = @class_val AND q.module = @module_val
     """
@@ -799,18 +807,24 @@ def process_answers_session(class_val, module_val, team, answers):
 
     # Create a lookup for correct answers
     correct_answers = {str(q["question_num"]): str(q["correct_answer"]) for q in questions}
-
+    open_answers = {str(q["question_num"]): bool(q["open"]) for q in questions}
     # Validate and log answers
     feedback = {}
     attempts = []
     for question_num, answer_num in answers.items():
         correct_answer = correct_answers.get(str(question_num))
-        if correct_answer is None:
+        
+        if open_answers.get(str(question_num)):
+            is_correct = True
+            feedback[question_num] = {"correct": is_correct}
+
+        elif correct_answer is None:
             feedback[question_num] = {"correct": False, "message": "Invalid question number"}
             continue
 
-        is_correct = str(correct_answer) == str(answer_num)
-        feedback[question_num] = {"correct": is_correct}
+        else:
+            is_correct = str(correct_answer) == str(answer_num)
+            feedback[question_num] = {"correct": is_correct}
 
         attempts.append({
             'PartitionKey': f"{class_val}_{module_val}",
@@ -819,6 +833,7 @@ def process_answers_session(class_val, module_val, team, answers):
             'module': module_val,
             'team': team,
             'question': question_num,
+            'open': open_answers.get(str(question_num)),
             'answer': answer_num,
             'datetime': str(dt.datetime.now(dt.timezone.utc)),
             'correct': int(is_correct),
