@@ -732,7 +732,7 @@ def process_answers(token, answers):
     # Fetch all questions for the quiz in a single query
     container = init_cosmos('quiz', DATABASE)
     query = """
-        SELECT c.question_num, c.correct_answer FROM quiz q
+        SELECT c.question_num, c.correct_answer, c.open FROM quiz q
         JOIN c IN q.questions
         WHERE q.class = @class_val AND q.module = @module_val
     """
