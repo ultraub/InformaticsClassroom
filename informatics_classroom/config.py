@@ -36,6 +36,35 @@ class Config:
     else:
         DATABASE = os.getenv('COSMOS_DATABASE_PROD', 'bids-class')
 
+    # ========== REACT SPA MIGRATION CONFIGURATION ==========
+
+    # Feature flag: Enable React UI (vs Flask templates)
+    USE_REACT_UI = os.getenv('USE_REACT_UI', 'true').lower() == 'true'
+
+    # React build path
+    REACT_BUILD_PATH = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'informatics-classroom-ui',
+        'dist'
+    )
+
+    # Role-based rollout configuration
+    # Options: 'admins', 'instructors', 'all'
+    REACT_ROLLOUT_MODE = os.getenv('REACT_ROLLOUT_MODE', 'admins')
+
+    # Map rollout modes to allowed roles
+    REACT_ENABLED_ROLES = {
+        'admins': ['admin'],
+        'instructors': ['admin', 'instructor'],
+        'all': ['admin', 'instructor', 'ta', 'student']
+    }.get(REACT_ROLLOUT_MODE, ['admin'])
+
+    # JWT Configuration
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)  # Use Flask secret if not set
+    JWT_ALGORITHM = 'HS256'
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', '3600'))  # 1 hour
+    JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv('JWT_REFRESH_TOKEN_EXPIRES', '2592000'))  # 30 days
+
 class Keys:
     # SECURITY: Azure credentials now loaded from environment variables
 
