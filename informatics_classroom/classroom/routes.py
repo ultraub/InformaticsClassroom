@@ -176,6 +176,11 @@ def generate_token_page():
     if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))
 
+    # SECURITY: Only admins and instructors can generate tokens
+    if not (is_admin() or is_instructor()):
+        flash("You do not have permission to access this page.", "error")
+        return redirect(url_for("classroom_bp.landingpage"))
+
     users = get_current_user()
     if not users:
         return redirect(url_for("auth_bp.login"))
@@ -230,8 +235,13 @@ def submit_answers_page():
 def manage_users_page():
     """Render the manage users page."""
     if not ich.check_user_session(session):
-    #or not is_admin(session['user']):
         return redirect(url_for("auth_bp.login"))
+
+    # SECURITY: Only admins can manage users
+    if not is_admin():
+        flash("You do not have permission to access this page.", "error")
+        return redirect(url_for("classroom_bp.landingpage"))
+
     return render_template("manage_users.html", title="Manage Users")
 
 @classroom_bp.route("/exercise-review", methods=["GET"])
@@ -263,7 +273,8 @@ def view_quizzes():
 @classroom_bp.route("/api/grant-class-permission", methods=["POST"])
 def grant_class_permission():
     """Grant class access to a user."""
-    if not session.get("user") or not is_admin(session['user']):
+    # SECURITY FIX: Corrected parameter passing - is_admin() gets user from session
+    if not session.get("user") or not is_admin():
         return jsonify({"message": "Unauthorized"}), 401
 
     data = request.json
@@ -516,13 +527,17 @@ def modify_quiz():
 
     if not (is_admin() or is_instructor()):
         return jsonify({"message": "Unauthorized"}), 401
-    
+
     data = request.json
     quiz_id = data.get("quiz_id")
     questions = data.get("questions", [])  # Accepting the entire questions array
 
     if not quiz_id or not isinstance(questions, list):
         return jsonify({"message": "Missing or invalid required fields"}), 400
+
+    # SECURITY: Verify quiz ownership before allowing modification
+    if not can_modify_quiz(quiz_id):
+        return jsonify({"message": "Unauthorized: You do not own this quiz"}), 403
 
     updated_by = session['user'].get('preferred_username').split('@')[0]
     update_datetime = str(dt.datetime.now(dt.timezone.utc))
@@ -639,12 +654,10 @@ def cleanup_tokens():
 # User Role Management
 @classroom_bp.route("/assign-role", methods=["POST"])
 def assign_role():
-    if not session.get("user") or not is_admin(session['user']):
+    # SECURITY FIX: Only admins can assign roles, removed redundant checks
+    if not session.get("user") or not is_admin():
         return jsonify({"message": "Unauthorized"}), 401
 
-    if not (is_admin() or is_instructor()):
-        return jsonify({"message": "Unauthorized"}), 401
-    
     data = request.json
     user_id = data.get('user_id')
     role = data.get('role')
@@ -697,6 +710,24 @@ def is_student(user):
     if get_user_role(user_id=user) == 'Student':
         return True
     return False
+
+def owns_quiz(quiz_id, user_id=None):
+    """Check if the user owns the specified quiz."""
+    if not user_id:
+        user_id = session['user'].get('preferred_username').split('@')[0]
+
+    quizzes = get_quiz_by_id(quiz_id=quiz_id)
+    if not quizzes:
+        return False
+
+    quiz = quizzes[0]
+    return quiz.get('owner') == user_id
+
+def can_modify_quiz(quiz_id, user_id=None):
+    """Check if the user can modify the specified quiz (admin or owner)."""
+    if is_admin(user_id):
+        return True
+    return owns_quiz(quiz_id, user_id)
 
 @classroom_bp.route('/home')
 def landingpage():
@@ -911,6 +942,11 @@ def assignment():
     """Render the assignment analysis page with class selection."""
     if not ich.check_user_session(session):
         return redirect(url_for("auth_bp.login"))
+
+    # SECURITY: Only admins and instructors can access assignment analysis
+    if not (is_admin() or is_instructor()):
+        flash("You do not have permission to access this page.", "error")
+        return redirect(url_for("classroom_bp.landingpage"))
 
     accessible_classes = get_classes_for_user()
 
