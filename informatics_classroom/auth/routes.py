@@ -168,6 +168,9 @@ def api_current_user():
                 class_roles = {class_id: 'student' for class_id in accessible_classes}
 
     # Convert session user to React expected format with full permissions
+    # Use database roles if available, otherwise fall back to session roles
+    user_roles = db_user.get('roles', []) if db_user else user_data.get("roles", ["student"])
+
     return jsonify({
         "success": True,
         "data": {
@@ -175,7 +178,7 @@ def api_current_user():
             "username": user_data.get("preferred_username", ""),
             "email": user_data.get("email", user_data.get("preferred_username", "")),
             "displayName": user_data.get("name", ""),
-            "roles": user_data.get("roles", ["student"]),
+            "roles": user_roles,  # Use database roles (admin) not session roles
             "isActive": True,
             "classRoles": class_roles,
             "class_memberships": class_memberships,  # Include new format
@@ -454,60 +457,6 @@ def api_permissions_matrix():
             "success": False,
             "error": str(e)
         }), 500
-
-@auth_bp.route("/api/permissions/templates", methods=["GET"])
-def api_permissions_templates():
-    """API endpoint for role templates"""
-    from flask import jsonify
-
-    # Development mode: Auto-login if no session exists
-    if Config.DEBUG and not session.get("user"):
-        session["user"] = {
-            "preferred_username": "rbarre16@jh.edu",
-            "name": "Robert Barrett (Dev Mode)",
-            "email": "rbarre16@jh.edu",
-            "roles": ["admin"]
-        }
-
-    if not session.get("user"):
-        return jsonify({
-            "success": False,
-            "error": "Not authenticated"
-        }), 401
-
-    # Return mock templates for now
-    # In a real system, these would be stored in the database
-    templates = [
-        {
-            "id": "instructor-full",
-            "name": "Full Instructor Access",
-            "description": "Complete teaching permissions including quiz and assignment management",
-            "permissions": ["quiz.view", "quiz.create", "quiz.modify", "assignment.view", "assignment.create", "assignment.manage"],
-            "createdAt": "2024-01-01T00:00:00Z",
-            "updatedAt": "2024-01-01T00:00:00Z"
-        },
-        {
-            "id": "ta-limited",
-            "name": "Teaching Assistant",
-            "description": "View and grade permissions without creation rights",
-            "permissions": ["quiz.view", "assignment.view", "assignment.grade"],
-            "createdAt": "2024-01-01T00:00:00Z",
-            "updatedAt": "2024-01-01T00:00:00Z"
-        },
-        {
-            "id": "student-basic",
-            "name": "Standard Student",
-            "description": "Basic student access for viewing and submitting work",
-            "permissions": ["quiz.view", "assignment.view"],
-            "createdAt": "2024-01-01T00:00:00Z",
-            "updatedAt": "2024-01-01T00:00:00Z"
-        }
-    ]
-
-    return jsonify({
-        "success": True,
-        "data": templates
-    }), 200
 
 @auth_bp.route("/api/permissions/bulk-grant", methods=["POST"])
 def api_bulk_grant_permissions():

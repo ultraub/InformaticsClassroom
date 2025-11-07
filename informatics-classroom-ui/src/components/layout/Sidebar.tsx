@@ -42,12 +42,6 @@ const navigation: NavItem[] = [
     requiredRole: Role.INSTRUCTOR,
   },
   {
-    name: 'Role Templates',
-    href: '/templates',
-    icon: KeyIcon,
-    requiredPermission: Permission.USER_MANAGE,
-  },
-  {
     name: 'Token Generator',
     href: '/tokens/generate',
     icon: KeyIcon,
@@ -63,12 +57,6 @@ const navigation: NavItem[] = [
     name: 'Exercise Review',
     href: '/exercises/review',
     icon: BookOpenIcon,
-  },
-  {
-    name: 'Assignments',
-    href: '/assignments',
-    icon: ClipboardDocumentListIcon,
-    requiredPermission: Permission.QUIZ_VIEW,
   },
   {
     name: 'Student Center',

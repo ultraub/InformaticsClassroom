@@ -5,7 +5,6 @@ import { Layout } from './components/layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Users } from './pages/Users';
-import { RoleTemplates } from './pages/RoleTemplates';
 import { AuditLogs } from './pages/AuditLogs';
 import StudentCenter from './pages/StudentCenter';
 import QuizTaking from './pages/QuizTaking';
@@ -80,18 +79,6 @@ function App() {
               <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
                 <Layout>
                   <ClassManagement />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Role Templates */}
-          <Route
-            path="/templates"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <RoleTemplates />
                 </Layout>
               </ProtectedRoute>
             }
@@ -200,18 +187,6 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ExerciseReview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Assignments */}
-          <Route
-            path="/assignments"
-            element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
-                <Layout>
-                  <AssignmentAnalysis />
                 </Layout>
               </ProtectedRoute>
             }

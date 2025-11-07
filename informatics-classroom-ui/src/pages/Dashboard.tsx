@@ -143,15 +143,6 @@ export function Dashboard() {
                 Create Quiz
               </span>
             </a>
-            <a
-              href="/templates"
-              className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-sm transition-all"
-            >
-              <ShieldCheckIcon className="h-8 w-8 text-primary-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">
-                Role Templates
-              </span>
-            </a>
           </div>
         </Card>
       </div>

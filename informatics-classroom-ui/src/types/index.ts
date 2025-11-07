@@ -95,17 +95,6 @@ export interface ClassPermission {
   permissions: Permission[];
 }
 
-// Role template types
-export interface RoleTemplate {
-  id: string;
-  name: string;
-  description: string;
-  permissions: Permission[];
-  isSystem: boolean;
-  createdBy?: string;
-  createdAt: string;
-}
-
 // Audit log types
 export interface AuditLogEntry {
   id: string;

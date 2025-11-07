@@ -2,7 +2,6 @@ import { apiClient } from './api';
 import type {
   Permission,
   PermissionCheck,
-  RoleTemplate,
 } from '../types';
 
 export const permissionsService = {
@@ -29,36 +28,6 @@ export const permissionsService = {
   // Get permissions for a specific class role
   getClassRolePermissions: (classRole: string) =>
     apiClient.get<Permission[]>(`/api/permissions/class-role/${classRole}`),
-
-  // Role Templates
-  getRoleTemplates: () =>
-    apiClient.get<RoleTemplate[]>('/api/permissions/templates'),
-
-  getRoleTemplate: (templateId: string) =>
-    apiClient.get<RoleTemplate>(`/api/permissions/templates/${templateId}`),
-
-  createRoleTemplate: (template: Omit<RoleTemplate, 'id' | 'createdAt'>) =>
-    apiClient.post<RoleTemplate>('/api/permissions/templates', template),
-
-  updateRoleTemplate: (
-    templateId: string,
-    template: Partial<RoleTemplate>
-  ) =>
-    apiClient.put<RoleTemplate>(
-      `/api/permissions/templates/${templateId}`,
-      template
-    ),
-
-  deleteRoleTemplate: (templateId: string) =>
-    apiClient.delete<void>(`/api/permissions/templates/${templateId}`),
-
-  // Apply template to user
-  applyTemplate: (userId: string, templateId: string, classId?: string) =>
-    apiClient.post<void>('/api/permissions/apply-template', {
-      userId,
-      templateId,
-      classId,
-    }),
 
   // Bulk permission operations
   bulkGrantPermissions: (
