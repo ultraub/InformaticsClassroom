@@ -34,11 +34,6 @@ def inject_roles():
         'is_instructor': is_instructor()
     }
 
-def load_data_from_cosmos(container_name, query, parameters):
-    """Load data from database using query and parameters (DEPRECATED - use get_database_adapter() directly)."""
-    db = get_database_adapter()
-    return db.query_raw(container_name, query, parameters)
-
 # --- DATABASE GETTER ROUTES ---
 
 def get_current_user(user_id = None):
@@ -395,21 +390,6 @@ def get_quiz_content():
     }), 200
 
 # should depricate/remove
-@classroom_bp.route("/api/get-quiz-content-modify", methods=["GET"])
-def get_quiz_content_modify():
-    """Retrieve questions for a specific quiz."""
-    quiz_id = request.args.get("quiz_id")
-    if not quiz_id:
-        return jsonify({"message": "Quiz ID is required"}), 400
-
-    quizzes = get_quiz_by_id(quiz_id=quiz_id)
-
-    if not quizzes:
-        return jsonify({"message": "Quiz not found"}), 404
-
-    quiz = quizzes[0]
-    return jsonify({"questions": quiz.get("questions", [])}), 200
-
 @classroom_bp.route("/api/generate-token", methods=["POST"])
 def generate_token():
     """Generate a token for a class and module."""

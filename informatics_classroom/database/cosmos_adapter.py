@@ -3,8 +3,12 @@ Azure Cosmos DB Adapter
 
 Implements the DatabaseAdapter interface for Azure Cosmos DB (current system)
 Wraps the existing azure_func.init_cosmos functionality
+
+DEPRECATED: This adapter is maintained for backward compatibility only.
+PostgreSQL is now the primary database.
 """
 
+import warnings
 from typing import Dict, List, Optional
 from informatics_classroom.azure_func import init_cosmos
 from .interface import DatabaseAdapter
@@ -25,6 +29,12 @@ class CosmosDBAdapter(DatabaseAdapter):
         Args:
             database_name: Cosmos database name
         """
+        warnings.warn(
+            "CosmosDBAdapter is deprecated. PostgreSQL is now the primary database. "
+            "This adapter is maintained for backward compatibility only.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.database_name = database_name
         self._containers = {}  # Cache of container clients
 

@@ -54,7 +54,7 @@ def get_database_adapter(
         )
     """
 
-    database_type = database_type or os.getenv('DATABASE_TYPE', 'cosmos')
+    database_type = database_type or os.getenv('DATABASE_TYPE', 'postgresql')
     database_name = database_name or Config.DATABASE
 
     if database_type == 'cosmos':
