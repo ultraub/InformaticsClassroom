@@ -64,7 +64,7 @@ function App() {
           <Route
             path="/classes"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <ClassSelector />
                 </Layout>
@@ -76,7 +76,7 @@ function App() {
           <Route
             path="/classes/:classId/manage"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <ClassManagement />
                 </Layout>
@@ -136,7 +136,7 @@ function App() {
           <Route
             path="/quiz/create"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <QuizBuilder />
                 </Layout>
@@ -148,7 +148,7 @@ function App() {
           <Route
             path="/quiz/edit"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <QuizBuilder />
                 </Layout>
@@ -160,7 +160,7 @@ function App() {
           <Route
             path="/tokens/generate"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <TokenGenerator />
                 </Layout>
@@ -172,7 +172,7 @@ function App() {
           <Route
             path="/assignments/analyze"
             element={
-              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+              <ProtectedRoute requiredRole={Role.TA}>
                 <Layout>
                   <AssignmentAnalysis />
                 </Layout>

@@ -39,19 +39,19 @@ const navigation: NavItem[] = [
     name: 'Class Management',
     href: '/classes',
     icon: AcademicCapIcon,
-    requiredRole: Role.INSTRUCTOR,
+    requiredRole: Role.TA, // Both instructors and TAs have access (instructor inherits ta)
   },
   {
     name: 'Token Generator',
     href: '/tokens/generate',
     icon: KeyIcon,
-    requiredRole: Role.INSTRUCTOR,
+    requiredRole: Role.TA, // Both instructors and TAs have access (instructor inherits ta)
   },
   {
     name: 'Assignment Analysis',
     href: '/assignments/analyze',
     icon: BeakerIcon,
-    requiredRole: Role.INSTRUCTOR,
+    requiredRole: Role.TA, // Both instructors and TAs have access (instructor inherits ta)
   },
   {
     name: 'Exercise Review',
@@ -87,12 +87,12 @@ const ROLE_HIERARCHY: Record<string, string[]> = {
 
 // Permission mappings for roles
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  admin: ['*'], // Wildcard - all permissions
+  admin: ['*'], // Wildcard - all permissions (includes user.view, user.manage, system.view_logs)
   instructor: [
     'quiz.view', 'quiz.create', 'quiz.modify', 'quiz.delete',
     'assignment.view', 'assignment.create', 'assignment.grade',
-    'user.view', 'user.manage',
-    'student.view', 'student.manage'
+    'student.view', 'student.manage',
+    'class.admin', 'class.view_analytics'
   ],
   ta: ['quiz.view', 'assignment.view', 'assignment.grade', 'student.view'],
   student: ['quiz.view', 'assignment.view', 'own_data.view'],

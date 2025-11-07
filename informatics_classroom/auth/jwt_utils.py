@@ -210,11 +210,14 @@ def require_jwt_token(f):
                         class_roles[class_id] = inferred_role
 
             # Convert session user to JWT-compatible format
+            # Use database roles if available, otherwise fall back to session roles
+            user_roles = db_user.get('roles', []) if db_user else user_data.get('roles', ['student'])
+
             request.jwt_user = {
                 'user_id': user_id,
                 'email': user_data.get('email', user_data.get('preferred_username', '')),
                 'display_name': user_data.get('name', ''),
-                'roles': user_data.get('roles', ['student']),
+                'roles': user_roles,  # Use database roles (admin) not session roles
                 'class_memberships': class_memberships,  # New: structured class memberships
                 'classRoles': class_roles,  # Legacy: simple class->role mapping
                 'accessible_classes': accessible_classes,  # Legacy: for backward compatibility

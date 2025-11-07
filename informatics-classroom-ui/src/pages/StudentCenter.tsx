@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
@@ -53,6 +53,7 @@ interface ProgressData {
 export default function StudentCenter() {
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const navigate = useNavigate();
+  const detailsSectionRef = useRef<HTMLDivElement>(null);
 
   // Fetch dashboard data
   const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useQuery({
@@ -78,6 +79,13 @@ export default function StudentCenter() {
     },
     enabled: !!selectedCourse,
   });
+
+  // Scroll to details section when course is selected
+  useEffect(() => {
+    if (selectedCourse && detailsSectionRef.current) {
+      detailsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedCourse]);
 
   if (dashboardLoading) {
     return (
@@ -129,31 +137,44 @@ export default function StudentCenter() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span className="font-semibold">{summary.completion_percentage}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all"
-                    style={{ width: `${summary.completion_percentage}%` }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm mt-4">
-                  <div>
-                    <div className="text-muted-foreground">Answered</div>
-                    <div className="font-semibold">
-                      {summary.answered_questions}/{summary.total_questions}
-                    </div>
+              <div className="space-y-3">
+                {/* Progress Bar */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold">{summary.completion_percentage}%</span>
                   </div>
-                  <div>
-                    <div className="text-muted-foreground">Correct</div>
-                    <div className="font-semibold text-green-600">
-                      {summary.correct_questions}/{summary.answered_questions || summary.total_questions}
-                    </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all"
+                      style={{ width: `${summary.completion_percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {summary.answered_questions} of {summary.total_questions} questions attempted
                   </div>
                 </div>
+
+                {/* Accuracy Bar */}
+                {summary.answered_questions > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-muted-foreground">Accuracy</span>
+                      <span className="font-semibold text-green-600">
+                        {Math.round((summary.correct_questions / summary.answered_questions) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-green-600 h-2.5 rounded-full transition-all"
+                        style={{ width: `${(summary.correct_questions / summary.answered_questions) * 100}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {summary.correct_questions} of {summary.answered_questions} correct
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -161,7 +182,7 @@ export default function StudentCenter() {
       </div>
 
       {/* Course Selection Dropdown */}
-      <Card>
+      <Card ref={detailsSectionRef}>
         <CardHeader>
           <CardTitle>Select Course to View Progress</CardTitle>
           <CardDescription>Choose a course to see detailed module progress</CardDescription>

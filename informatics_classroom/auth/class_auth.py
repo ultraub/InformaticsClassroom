@@ -21,9 +21,10 @@ ROLE_PERMISSIONS = {
         'take_quizzes',         # Can take quizzes (for testing)
     ],
     'ta': [
-        'manage_quizzes',       # Create, edit (but not delete) quizzes
+        'manage_quizzes',       # Create, edit, delete quizzes
         'manage_tokens',        # Generate access tokens
         'view_analytics',       # View detailed analytics and grades
+        'manage_members',       # Add/remove class members
         'take_quizzes',         # Can take quizzes
     ],
     'student': [
