@@ -15,6 +15,7 @@ import AssignmentAnalysis from './pages/AssignmentAnalysis';
 import ExerciseReview from './pages/ExerciseReview';
 import ClassManagement from './pages/ClassManagement';
 import ClassSelector from './pages/ClassSelector';
+import { SubmitAnswers } from './pages/SubmitAnswers';
 import { Role } from './types';
 
 // Create a client
@@ -127,6 +128,18 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <QuizTaking />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Submit Answers */}
+          <Route
+            path="/submit-answers"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SubmitAnswers />
                 </Layout>
               </ProtectedRoute>
             }

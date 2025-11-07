@@ -76,6 +76,11 @@ const navigation: NavItem[] = [
     icon: AcademicCapIcon,
   },
   {
+    name: 'Submit Answers',
+    href: '/submit-answers',
+    icon: ClipboardDocumentListIcon,
+  },
+  {
     name: 'Audit Logs',
     href: '/audit',
     icon: ChartBarIcon,
