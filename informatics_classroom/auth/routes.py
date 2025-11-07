@@ -14,32 +14,6 @@ def auth_configure_app(app):
     app.jinja_env.globals.update(_build_auth_code_flow=_build_auth_code_flow)  # Used in template
     return app
 
-# Commented out - React SPA handles routing now
-# @auth_bp.route("/")
-# def index():
-#     # Development mode: Auto-login as test user when DEBUG=True
-#     if Config.DEBUG and not session.get("user"):
-#         session["user"] = {
-#             "preferred_username": "rbarre16@jh.edu",
-#             "name": "Robert Barrett (Dev Mode)",
-#             "email": "rbarre16@jh.edu",
-#             "roles": ["admin"]  # Grant admin role in dev mode
-#         }
-#
-#     if not session.get("user"):
-#         return redirect(url_for("auth_bp.login"))
-#     if 'user' in session.keys():
-#         if 'return_to' in session.keys():
-#             return redirect(url_for(session['return_to'], exercise=session['exercise']))
-#
-#     # Redirect to React dashboard if React UI is enabled
-#     if Config.USE_REACT_UI:
-#         return redirect('/dashboard')
-#
-#     # Fallback to Flask template
-#     return redirect(url_for("classroom_bp.landingpage"))
-
-
 @auth_bp.route("/login")
 def login():
     # Development mode: Auto-login as test user when DEBUG=True
