@@ -1021,10 +1021,10 @@ def api_get_class_grades(class_id):
 
 @classroom_bp.route('/api/instructor/class-modules', methods=['GET'])
 @require_jwt_token
-@require_role(['admin', 'instructor'])
 def api_get_class_modules():
     """
-    Get all classes and their modules for the instructor.
+    Get all classes and their modules for the user.
+    Returns classes based on user's class memberships (already filtered by access).
     Returns: { classes: [string], class_modules: {class: [modules]} }
     """
     try:

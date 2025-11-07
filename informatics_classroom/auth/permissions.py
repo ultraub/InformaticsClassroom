@@ -154,35 +154,6 @@ def has_permission(user: Dict, permission: str, class_id: Optional[str] = None) 
     return False
 
 
-def get_user_class_role(user: Dict, class_id: str) -> Optional[str]:
-    """
-    Get user's role for a specific class
-
-    Args:
-        user: User document/dict
-        class_id: Class identifier
-
-    Returns:
-        Role name or None
-    """
-    if not user or not class_id:
-        return None
-
-    # Check classRoles mapping
-    class_roles = user.get('classRoles', {})
-    if isinstance(class_roles, dict):
-        role = class_roles.get(class_id)
-        if role:
-            return role
-
-    # Fallback: if user has access to class but no explicit classRole, default to student
-    access = user.get('access', [])
-    if class_id in access:
-        return 'student'
-
-    return None
-
-
 def get_user_classes(user: Dict) -> List[str]:
     """
     Get all classes user has access to

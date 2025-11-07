@@ -87,6 +87,10 @@ def get_user_answers_for_quiz(class_val, module_val, team):
     return answers
 
 def get_user_role(user_id = None):
+    """
+    DEPRECATED: Use auth.class_auth.get_user_class_role() for class-specific roles.
+    This function only returns global role, not class-level permissions.
+    """
     result = get_current_user(user_id=user_id)
     if result:
         return result[0]['role']
@@ -697,16 +701,28 @@ def check_role():
 
 # Permissions Middleware
 def is_admin(user=None):
+    """
+    DEPRECATED: Use @require_class_role(['admin']) decorator from auth.class_auth
+    for class-level authorization. This only checks global role.
+    """
     if get_user_role(user_id=user) == 'Admin':
         return True
     return False
 
 def is_instructor(user=None):
+    """
+    DEPRECATED: Use @require_class_role(['instructor']) decorator from auth.class_auth
+    for class-level authorization. This only checks global role.
+    """
     if get_user_role(user_id=user) == 'Instructor':
         return True
     return False
 
 def is_student(user):
+    """
+    DEPRECATED: Use @require_class_role(['student']) decorator from auth.class_auth
+    for class-level authorization. This only checks global role.
+    """
     if get_user_role(user_id=user) == 'Student':
         return True
     return False

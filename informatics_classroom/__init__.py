@@ -7,8 +7,6 @@ import os
 
 from informatics_classroom.classroom.routes import classroom_bp
 from informatics_classroom.imageupload.routes import image_bp
-from informatics_classroom.networkbuilder.routes import network_bp
-from informatics_classroom.mlmodelgame.routes import mlmodel_bp
 from informatics_classroom.auth.routes import auth_bp, auth_configure_app
 
 
@@ -27,8 +25,6 @@ def create_app():
     # Register all API blueprints with /api prefix (for backward compatibility, also register at /)
     app.register_blueprint(classroom_bp,url_prefix='/')
     app.register_blueprint(image_bp,url_prefix='/')
-    app.register_blueprint(network_bp,url_prefix='/')
-    app.register_blueprint(mlmodel_bp,url_prefix='/')
     app.register_blueprint(auth_bp,url_prefix='/')
 
     # ========== REACT SPA SERVING ==========
