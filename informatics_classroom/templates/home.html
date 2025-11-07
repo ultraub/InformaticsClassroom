@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Informatics Classroom</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .welcome-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .welcome-card h2 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .status-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid #667eea;
+        }
+        .status-card h3 {
+            color: #667eea;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        .status-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .status-card .label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .api-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+        }
+        .api-section h2 {
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .api-list {
+            list-style: none;
+        }
+        .api-list li {
+            padding: 0.75rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+        }
+        .api-list li:last-child {
+            border-bottom: none;
+        }
+        .api-method {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-right: 1rem;
+            min-width: 60px;
+            text-align: center;
+        }
+        .api-method.get {
+            background: #10b981;
+        }
+        .api-method.post {
+            background: #3b82f6;
+        }
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1rem;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎓 Informatics Classroom</h1>
+        <p>Backend API and Database Management System</p>
+    </div>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h2>✅ Authentication Successful!</h2>
+            <p>You have successfully logged in to the Informatics Classroom backend.</p>
+            <p style="margin-top: 1rem; color: #666;">
+                The React UI is being developed. For now, you can access the API endpoints directly or use this backend dashboard.
+            </p>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>📊 Database Status</h3>
+                <div class="value">✅ Connected</div>
+                <div class="label">PostgreSQL Local</div>
+            </div>
+
+            <div class="status-card">
+                <h3>📁 Documents</h3>
+                <div class="value">82,295</div>
+                <div class="label">Successfully Migrated</div>
+            </div>
+
+            <div class="status-card">
+                <h3>👥 Users</h3>
+                <div class="value">117</div>
+                <div class="label">Active Accounts</div>
+            </div>
+
+            <div class="status-card">
+                <h3>📝 Quizzes</h3>
+                <div class="value">79</div>
+                <div class="label">Quiz Definitions</div>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>📡 Available API Endpoints</h2>
+            <ul class="api-list">
+                <li>
+                    <span class="api-method post">POST</span>
+                    <span>/api/tokens/generate</span>
+                </li>
+                <li>
+                    <span class="api-method get">GET</span>
+                    <span>/api/instructor/class-modules</span>
+                </li>
+                <li>
+                    <span class="api-method post">POST</span>
+                    <span>/api/assignments/analyze</span>
+                </li>
+                <li>
+                    <span class="api-method get">GET</span>
+                    <span>/api/student/exercise-review</span>
+                </li>
+                <li>
+                    <span class="api-method get">GET</span>
+                    <span>/api/classroom/*</span>
+                </li>
+            </ul>
+            <p style="margin-top: 1.5rem; color: #666; font-size: 0.9rem;">
+                💡 <strong>Tip:</strong> Use tools like Postman or curl to test API endpoints.
+                Include your authentication token in the Authorization header.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

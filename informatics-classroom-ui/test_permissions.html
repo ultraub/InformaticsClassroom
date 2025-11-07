@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head><title>Permission Test</title></head>
+<body>
+<script>
+// Copy of ROLE_HIERARCHY from permissions.ts
+const ROLE_HIERARCHY = {
+  admin: ['instructor', 'ta', 'grader', 'student'],
+  instructor: ['ta', 'grader', 'student'],
+  ta: ['student'],
+  grader: ['student'],
+  student: [],
+};
+
+function hasRole(user, requiredRole) {
+  if (!user) return false;
+  const userRoles = user.roles || [];
+  
+  // Admin always has all roles
+  if (userRoles.includes('admin')) {
+    console.log('✅ User is admin - has all roles');
+    return true;
+  }
+  
+  // Check if user has the required role directly
+  if (userRoles.includes(requiredRole)) {
+    console.log(`✅ User has ${requiredRole} role directly`);
+    return true;
+  }
+  
+  // Check if user has a role that inherits the required role
+  for (const userRole of userRoles) {
+    const inheritedRoles = ROLE_HIERARCHY[userRole] || [];
+    if (inheritedRoles.includes(requiredRole)) {
+      console.log(`✅ User role ${userRole} inherits ${requiredRole}`);
+      return true;
+    }
+  }
+  
+  console.log(`❌ User does NOT have ${requiredRole} role`);
+  return false;
+}
+
+// Test with your user data
+const user = {
+  "id": "rbarre16",
+  "roles": ["admin"],
+  "classRoles": {}
+};
+
+console.log('Testing permission checks for user:', user);
+console.log('Has instructor role?', hasRole(user, 'instructor'));
+console.log('Has student role?', hasRole(user, 'student'));
+</script>
+<pre id="output"></pre>
+</body>
+</html>

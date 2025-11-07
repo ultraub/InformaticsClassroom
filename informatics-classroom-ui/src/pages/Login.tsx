@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button, Input, Card } from '../components/common';
@@ -14,14 +14,8 @@ export function Login() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    login(
-      { username, password },
-      {
-        onSuccess: () => {
-          navigate(from, { replace: true });
-        },
-      }
-    );
+    // Initiate MSAL login flow (redirects to Microsoft)
+    login();
   };
 
   return (

@@ -51,10 +51,9 @@ class Permission(Enum):
     TOKEN_GENERATE = "token.generate"
     TOKEN_MANAGE = "token.manage"
 
-    # Assignment/Analytics permissions
-    ASSIGNMENT_VIEW = "assignment.view"
-    ASSIGNMENT_ANALYZE = "assignment.analyze"
-    ASSIGNMENT_EXPORT = "assignment.export"
+    # Analytics permissions
+    ANALYTICS_VIEW = "analytics.view"
+    ANALYTICS_EXPORT = "analytics.export"
 
     # System permissions
     SYSTEM_ADMIN = "system.admin"
@@ -117,10 +116,10 @@ ROLE_PERMISSIONS_MAP = {
             Permission.QUIZ_VIEW,
             Permission.QUIZ_CREATE,
             Permission.QUIZ_MODIFY,  # Own quizzes only
+            Permission.QUIZ_DELETE,
             Permission.CLASS_VIEW,
             Permission.TOKEN_GENERATE,
-            Permission.ASSIGNMENT_VIEW,
-            Permission.ASSIGNMENT_ANALYZE,
+            Permission.ANALYTICS_VIEW,
         ],
         inherits_from=None
     ),
@@ -149,8 +148,8 @@ CLASS_ROLE_PERMISSIONS_MAP = {
         Permission.CLASS_MANAGE,
         Permission.CLASS_ENROLL,
         Permission.QUIZ_ADMIN,
-        Permission.ASSIGNMENT_ANALYZE,
-        Permission.ASSIGNMENT_EXPORT,
+        Permission.ANALYTICS_VIEW,
+        Permission.ANALYTICS_EXPORT,
     ],
 
     ClassRole.CLASS_INSTRUCTOR: [
@@ -158,16 +157,17 @@ CLASS_ROLE_PERMISSIONS_MAP = {
         Permission.QUIZ_VIEW,
         Permission.QUIZ_CREATE,
         Permission.QUIZ_MODIFY,
-        Permission.ASSIGNMENT_VIEW,
-        Permission.ASSIGNMENT_ANALYZE,
+        Permission.QUIZ_DELETE,
+        Permission.ANALYTICS_VIEW,
         Permission.TOKEN_GENERATE,
     ],
 
     ClassRole.CLASS_TA: [
         Permission.CLASS_VIEW,
         Permission.QUIZ_VIEW,
-        Permission.ASSIGNMENT_VIEW,
-        Permission.ASSIGNMENT_ANALYZE,
+        Permission.QUIZ_CREATE,
+        Permission.QUIZ_MODIFY,
+        Permission.ANALYTICS_VIEW,
     ],
 
     ClassRole.CLASS_STUDENT: [

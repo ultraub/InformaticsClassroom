@@ -5,9 +5,16 @@ import { Layout } from './components/layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Users } from './pages/Users';
-import { PermissionMatrix } from './pages/PermissionMatrix';
 import { RoleTemplates } from './pages/RoleTemplates';
 import { AuditLogs } from './pages/AuditLogs';
+import StudentCenter from './pages/StudentCenter';
+import QuizTaking from './pages/QuizTaking';
+import QuizBuilder from './pages/QuizBuilder';
+import TokenGenerator from './pages/TokenGenerator';
+import AssignmentAnalysis from './pages/AssignmentAnalysis';
+import ExerciseReview from './pages/ExerciseReview';
+import ClassManagement from './pages/ClassManagement';
+import ClassSelector from './pages/ClassSelector';
 import { Role } from './types';
 
 // Create a client
@@ -53,13 +60,25 @@ function App() {
             }
           />
 
-          {/* Permission Matrix */}
+          {/* Class Selector */}
           <Route
-            path="/permissions"
+            path="/classes"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
                 <Layout>
-                  <PermissionMatrix />
+                  <ClassSelector />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Class Management - Unified Interface */}
+          <Route
+            path="/classes/:classId/manage"
+            element={
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+                <Layout>
+                  <ClassManagement />
                 </Layout>
               </ProtectedRoute>
             }
@@ -89,16 +108,85 @@ function App() {
             }
           />
 
-          {/* Quizzes */}
+          {/* Student Center */}
           <Route
-            path="/quizzes"
+            path="/student"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <div className="text-center py-12">
-                    <h2 className="text-2xl font-bold text-gray-900">Quizzes</h2>
-                    <p className="text-gray-600 mt-2">Quiz management coming soon...</p>
-                  </div>
+                  <StudentCenter />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Quiz Taking */}
+          <Route
+            path="/quiz"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <QuizTaking />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Quiz Builder - Create */}
+          <Route
+            path="/quiz/create"
+            element={
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+                <Layout>
+                  <QuizBuilder />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Quiz Builder - Edit */}
+          <Route
+            path="/quiz/edit"
+            element={
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+                <Layout>
+                  <QuizBuilder />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Token Generator */}
+          <Route
+            path="/tokens/generate"
+            element={
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+                <Layout>
+                  <TokenGenerator />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Assignment Analysis */}
+          <Route
+            path="/assignments/analyze"
+            element={
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
+                <Layout>
+                  <AssignmentAnalysis />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Exercise Review */}
+          <Route
+            path="/exercises/review"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ExerciseReview />
                 </Layout>
               </ProtectedRoute>
             }
@@ -108,12 +196,9 @@ function App() {
           <Route
             path="/assignments"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={Role.INSTRUCTOR}>
                 <Layout>
-                  <div className="text-center py-12">
-                    <h2 className="text-2xl font-bold text-gray-900">Assignments</h2>
-                    <p className="text-gray-600 mt-2">Assignment management coming soon...</p>
-                  </div>
+                  <AssignmentAnalysis />
                 </Layout>
               </ProtectedRoute>
             }

@@ -1,0 +1,26 @@
+{
+  "export_timestamp": "2025-11-04T20:56:01.091663",
+  "source_database": "bids-class",
+  "containers": [
+    {
+      "name": "users",
+      "document_count": 117,
+      "export_file": "users.json"
+    },
+    {
+      "name": "tokens",
+      "document_count": 334,
+      "export_file": "tokens.json"
+    },
+    {
+      "name": "quiz",
+      "document_count": 79,
+      "export_file": "quiz.json"
+    },
+    {
+      "name": "answer",
+      "document_count": 81765,
+      "export_file": "answer.json"
+    }
+  ]
+}

@@ -28,20 +28,12 @@ export function PermissionMatrix() {
       Permission.QUIZ_CREATE,
       Permission.QUIZ_MODIFY,
       Permission.QUIZ_DELETE,
-      Permission.QUIZ_SHARE,
-      Permission.QUIZ_COLLABORATE,
-    ],
-    'Assignment Management': [
-      Permission.ASSIGNMENT_VIEW,
-      Permission.ASSIGNMENT_CREATE,
-      Permission.ASSIGNMENT_MANAGE,
-      Permission.ASSIGNMENT_GRADE,
     ],
     'User Management': [
       Permission.USER_VIEW,
       Permission.USER_MANAGE,
     ],
-    'System Administration': [
+    'Class & System Administration': [
       Permission.TOKEN_GENERATE,
       Permission.CLASS_ADMIN,
       Permission.CLASS_VIEW_ANALYTICS,

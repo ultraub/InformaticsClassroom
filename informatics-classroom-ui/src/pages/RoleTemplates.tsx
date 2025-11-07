@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Card, Button, Badge, Modal, Input } from '../components/common';
 import { permissionsService } from '../services/permissions';
-import { Permission, RoleTemplate } from '../types';
+import { Permission, type RoleTemplate } from '../types';
 import { useUIStore } from '../store/uiStore';
 
 export function RoleTemplates() {
@@ -40,20 +40,12 @@ export function RoleTemplates() {
       Permission.QUIZ_CREATE,
       Permission.QUIZ_MODIFY,
       Permission.QUIZ_DELETE,
-      Permission.QUIZ_SHARE,
-      Permission.QUIZ_COLLABORATE,
-    ],
-    'Assignment Management': [
-      Permission.ASSIGNMENT_VIEW,
-      Permission.ASSIGNMENT_CREATE,
-      Permission.ASSIGNMENT_MANAGE,
-      Permission.ASSIGNMENT_GRADE,
     ],
     'User Management': [
       Permission.USER_VIEW,
       Permission.USER_MANAGE,
     ],
-    'System Administration': [
+    'Class & System Administration': [
       Permission.TOKEN_GENERATE,
       Permission.CLASS_ADMIN,
       Permission.CLASS_VIEW_ANALYTICS,

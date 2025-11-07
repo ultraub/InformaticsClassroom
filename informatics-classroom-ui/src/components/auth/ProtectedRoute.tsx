@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Permission, Role } from '../../types';
+import { hasAccess } from '../../utils/permissions';
 
 export interface ProtectedRouteProps {
   children: ReactNode;
@@ -36,7 +37,8 @@ export function ProtectedRoute({
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user && !user.roles.includes(requiredRole)) {
+  // Check role/permission with inheritance support
+  if ((requiredRole || requiredPermission) && user && !hasAccess(user, requiredRole, requiredPermission)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6 text-center">
@@ -61,6 +63,7 @@ export function ProtectedRoute({
           <p className="text-gray-600 mb-6">
             You don't have permission to access this resource.
             {requiredRole && ` Required role: ${requiredRole}`}
+            {requiredPermission && ` Required permission: ${requiredPermission}`}
           </p>
           <button
             onClick={() => window.history.back()}

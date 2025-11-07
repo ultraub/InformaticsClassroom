@@ -3,8 +3,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField,FormField,FieldList
 import numpy as np
 import pandas as pd
-from azure.cosmosdb.table.tableservice import TableService
-from informatics_classroom.azure_func import init_cosmos,load_answerkey
+# Cosmos DB imports removed - now using database adapter
+# from azure.cosmosdb.table.tableservice import TableService
+# from informatics_classroom.azure_func import init_cosmos,load_answerkey
 from informatics_classroom.classroom import classroom_bp
 from informatics_classroom.classroom.forms import AnswerForm, ExerciseForm
 from informatics_classroom.config import Keys, Config
@@ -15,6 +16,9 @@ import datetime as dt
 from markupsafe import escape
 import requests
 from flask import flash
+
+# Database adapter for PostgreSQL/Cosmos DB abstraction
+from informatics_classroom.database.factory import get_database_adapter
 
 # rbb setting for testing without authentication
 TESTING_MODE = Config.TESTING
@@ -31,59 +35,50 @@ def inject_roles():
     }
 
 def load_data_from_cosmos(container_name, query, parameters):
-    """Load data from Cosmos DB using query and parameters."""
-    container = init_cosmos(container_name, DATABASE)
-    return list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    """Load data from database using query and parameters (DEPRECATED - use get_database_adapter() directly)."""
+    db = get_database_adapter()
+    return db.query_raw(container_name, query, parameters)
 
 # --- DATABASE GETTER ROUTES ---
 
 def get_current_user(user_id = None):
     # update to make sure this is checked to exist
     user_id = user_id if user_id else session['user'].get('preferred_username').split('@')[0]
-    container = init_cosmos('users', DATABASE)
-    query = "SELECT * FROM c WHERE c.id = @user_id"
-    parameters = [{"name": "@user_id", "value": user_id}]
-    return list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
+    # Use database adapter (works with both PostgreSQL and Cosmos DB)
+    db = get_database_adapter()
+    users = db.query('users', filters={'id': user_id})
+    return users if users else []
 
 def get_token_details(token):
-
-    container = init_cosmos("tokens", DATABASE)
-    query = "SELECT * FROM c WHERE c.id = @token"
-    parameters = [{"name": "@token", "value": token}]
-    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    db = get_database_adapter()
+    result = db.query('tokens', filters={'id': token})
     return result
 
 def get_quiz(class_val, module_val):
-    container = init_cosmos("quiz", DATABASE)
-    query = "SELECT * FROM c WHERE c.class = @class_val AND c.module = @module_val"
-    parameters = [
-        {"name": "@class_val", "value": class_val},
-        {"name": "@module_val", "value": int(module_val)}
-    ]
-    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    db = get_database_adapter()
+    result = db.query('quiz', filters={'class': class_val, 'module': int(module_val)})
     return result
 
 def get_quiz_by_id(quiz_id):
-    container = init_cosmos('quiz', DATABASE)
-    query = "SELECT * FROM c WHERE c.id = @quiz_id"
-    parameters = [{"name": "@quiz_id", "value": quiz_id}]
-    result = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
-    return result
+    db = get_database_adapter()
+    quiz = db.get('quiz', quiz_id)
+    return [quiz] if quiz else []
 
 # this should be updated to be checked against the current quiz questions
 def get_user_answers_for_quiz(class_val, module_val, team):
-    answer_container = init_cosmos('answer', DATABASE)
-    answer_query = """
-        SELECT c.question, c.answer, c.correct FROM c
-        WHERE c.PartitionKey = @partition_key AND c.team = @team AND IS_DEFINED(c.datetime) AND c.datetime <> null
-        ORDER BY c.datetime DESC
+    db = get_database_adapter()
+    # Use query_raw for complex queries with ORDER BY
+    query = """
+        SELECT question, answer, correct FROM answer
+        WHERE partition_key = $1 AND team = $2 AND datetime IS NOT NULL
+        ORDER BY datetime DESC
     """
-    answer_parameters = [
-        {"name": "@partition_key", "value": f"{class_val}_{module_val}"},
-        {"name": "@team", "value": team}
+    parameters = [
+        {"name": "$1", "value": f"{class_val}_{module_val}"},
+        {"name": "$2", "value": team}
     ]
-    answers = list(answer_container.query_items(query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True))
-
+    answers = db.query_raw('answer', query, parameters)
     return answers
 
 def get_user_role(user_id = None):
@@ -100,51 +95,67 @@ def get_classes_for_user(user_id = None, include_owned = 0):
         quizzes = get_quizzes_for_user(user_id)
         accessible_classes = list({ quiz["class"] for quiz in quizzes })
         return accessible_classes
-    
-    users = get_current_user()
 
-    accessible_classes = users[0].get("accessible_classes", [])
-    # Fetch available modules for accessible classes
+    users = get_current_user(user_id)
+
+    if not users or len(users) == 0:
+        return []
+
+    user = users[0]
+    accessible_classes = []
+
+    # Get classes from new class_memberships structure ONLY
+    # We migrated away from accessible_classes for security reasons
+    class_memberships = user.get("class_memberships", [])
+    if class_memberships:
+        accessible_classes = [membership.get("class_id") for membership in class_memberships if membership.get("class_id")]
+
     return accessible_classes
 
 # get all modules for a class
 def get_modules_for_class(class_val):
-    quiz_container = init_cosmos('quiz', DATABASE)
-    query = """
-        SELECT DISTINCT c.module FROM c
-        WHERE c.class = @class_val
-    """
-    parameters = [{"name": "@class_val", "value": class_val}]
-    modules = [quiz["module"] for quiz in quiz_container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True)]
+    db = get_database_adapter()
+    # Use query_raw for DISTINCT queries with JSONB syntax
+    query = "SELECT DISTINCT (data->>'module')::int as module FROM quiz WHERE data->>'class' = $1 ORDER BY module"
+    parameters = [{"name": "$1", "value": class_val}]
+    results = db.query_raw('quiz', query, parameters)
+    modules = [quiz["module"] for quiz in results]
     return modules
 
 # primary quiz access route for gathering all classes a user should have access to
 def get_quizzes_for_user(user_id = None, include_answers = 0):
-
     user_id = session['user'].get('preferred_username').split('@')[0] if session['user'] else user_id
-    container = init_cosmos('quiz', DATABASE)
+    db = get_database_adapter()
 
+    # Fetch the accessible classes from user data
+    accessible_classes = get_classes_for_user(user_id)
+
+    # For PostgreSQL, use ANY for array containment with JSONB syntax
     # Combine conditions to filter quizzes by ownership or class access
     if include_answers:
         query = """
-            SELECT DISTINCT c.class, c.module, c.questions FROM c
-            WHERE c.owner = @user_id
-            OR ARRAY_CONTAINS(@accessible_classes, c.class)
+            SELECT DISTINCT
+                data->>'class' as class,
+                (data->>'module')::int as module,
+                data->'questions' as questions
+            FROM quiz
+            WHERE data->>'owner' = $1 OR data->>'class' = ANY($2::text[])
         """
     else:
         query = """
-            SELECT DISTINCT c.class, c.module FROM c
-            WHERE c.owner = @user_id
-            OR ARRAY_CONTAINS(@accessible_classes, c.class)
+            SELECT DISTINCT
+                data->>'class' as class,
+                (data->>'module')::int as module
+            FROM quiz
+            WHERE data->>'owner' = $1 OR data->>'class' = ANY($2::text[])
         """
-    # Fetch the accessible classes from user data
-    accessible_classes = get_classes_for_user(user_id)
+
     parameters = [
-        {"name": "@user_id", "value": user_id},
-        {"name": "@accessible_classes", "value": accessible_classes},
+        {"name": "$1", "value": user_id},
+        {"name": "$2", "value": accessible_classes},
     ]
 
-    quizzes = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    quizzes = db.query_raw('quiz', query, parameters)
     return quizzes
 
 def get_and_validate_token(token):
@@ -165,8 +176,8 @@ def get_and_validate_token(token):
 
 
 def set_object(object, table):
-    container = init_cosmos(table, DATABASE)
-    container.upsert_item(object)
+    db = get_database_adapter()
+    db.upsert(table, object)
 
 # --- HTML-SERVING ROUTES ---
 @classroom_bp.route("/generate-token", methods=["GET"])
@@ -636,18 +647,17 @@ def modify_quiz():
 # Optional: Add a cleanup utility to remove expired tokens periodically
 @classroom_bp.route("/cleanup-tokens", methods=["POST"])
 def cleanup_tokens():
-    container = init_cosmos('tokens', DATABASE)
-    query = "SELECT * FROM c"
-
-    tokens = list(container.query_items(
-        query=query,
-        enable_cross_partition_query=True
-    ))
+    db = get_database_adapter()
+    tokens = db.query('tokens')
 
     current_time = dt.datetime.now(dt.timezone.utc)
+    expired_token_ids = []
     for token in tokens:
         if dt.datetime.fromisoformat(token['expiry']) < current_time:
-            container.delete_item(item=token['id'], partition_key=token['id'])
+            expired_token_ids.append(token['id'])
+
+    if expired_token_ids:
+        db.bulk_delete('tokens', expired_token_ids)
 
     return jsonify({"message": "Expired tokens cleaned up."}), 200
 
@@ -761,17 +771,20 @@ def process_answers(token, answers):
     team = token_data.get("user")
 
     # Fetch all questions for the quiz in a single query
-    container = init_cosmos('quiz', DATABASE)
+    db = get_database_adapter()
+    # For PostgreSQL, use jsonb_array_elements to unnest the questions array
     query = """
-        SELECT c.question_num, c.correct_answer, c.open FROM quiz q
-        JOIN c IN q.questions
-        WHERE q.class = @class_val AND q.module = @module_val
+        SELECT (q->>'question_num')::int as question_num,
+               q->>'correct_answer' as correct_answer,
+               (q->>'open')::boolean as open
+        FROM quiz, jsonb_array_elements(data->'questions') as q
+        WHERE data->>'class' = $1 AND (data->>'module')::int = $2
     """
     parameters = [
-        {"name": "@class_val", "value": class_val},
-        {"name": "@module_val", "value": int(module_val)},
+        {"name": "$1", "value": class_val},
+        {"name": "$2", "value": int(module_val)},
     ]
-    questions = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    questions = db.query_raw('quiz', query, parameters)
 
     if not questions:
         return {"message": "Quiz not found", "status": 404, "feedback": {}}
@@ -812,26 +825,30 @@ def process_answers(token, answers):
         })
 
     # Batch log attempts
-    answer_container = init_cosmos('answer', DATABASE)
-    for attempt in attempts:
-        answer_container.upsert_item(attempt)
+    if attempts:
+        db = get_database_adapter()
+        for attempt in attempts:
+            db.upsert('answer', attempt)
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
 
 def process_answers_session(class_val, module_val, team, answers):
     """Validate and store multiple answers based on session access."""
     # Fetch all questions for the quiz
-    container = init_cosmos('quiz', DATABASE)
+    db = get_database_adapter()
+    # For PostgreSQL, use jsonb_array_elements to unnest the questions array
     query = """
-        SELECT c.question_num, c.correct_answer, c.open FROM quiz q
-        JOIN c IN q.questions
-        WHERE q.class = @class_val AND q.module = @module_val
+        SELECT (q->>'question_num')::int as question_num,
+               q->>'correct_answer' as correct_answer,
+               (q->>'open')::boolean as open
+        FROM quiz, jsonb_array_elements(data->'questions') as q
+        WHERE data->>'class' = $1 AND (data->>'module')::int = $2
     """
     parameters = [
-        {"name": "@class_val", "value": class_val},
-        {"name": "@module_val", "value": int(module_val)},
+        {"name": "$1", "value": class_val},
+        {"name": "$2", "value": int(module_val)},
     ]
-    questions = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+    questions = db.query_raw('quiz', query, parameters)
 
     if not questions:
         return {"message": "Quiz not found", "status": 404, "feedback": {}}
@@ -871,9 +888,10 @@ def process_answers_session(class_val, module_val, team, answers):
         })
 
     # Batch log attempts
-    answer_container = init_cosmos('answer', DATABASE)
-    for attempt in attempts:
-        answer_container.upsert_item(attempt)
+    if attempts:
+        db = get_database_adapter()
+        for attempt in attempts:
+            db.upsert('answer', attempt)
 
     return {"message": "Processed successfully", "status": 200, "feedback": feedback}
 
@@ -1001,25 +1019,25 @@ def analyze_assignment():
 
     active_questions = {str(q["question_num"]) for q in quiz[0].get("questions", [])}
 
-    # Query Cosmos
-    container = init_cosmos('answer', DATABASE)
+    # Query database
+    db = get_database_adapter()
     query = """
-        SELECT 
-            c.team, 
-            c.question, 
-            c.answer, 
-            c.correct, 
-            c.module, 
-            c.datetime 
-        FROM c 
-        WHERE LOWER(c.course) = LOWER(@class_name) AND c.module = @module_number AND IS_DEFINED(c.datetime) AND c.datetime <> null
-        ORDER BY c.datetime DESC
+        SELECT
+            data->>'team' as team,
+            data->>'question' as question,
+            data->>'answer' as answer,
+            data->>'correct' as correct,
+            data->>'module' as module,
+            data->>'datetime' as datetime
+        FROM answer
+        WHERE LOWER(data->>'course') = LOWER($1) AND data->>'module' = $2 AND data->>'datetime' IS NOT NULL
+        ORDER BY data->>'datetime' DESC
     """
     params = [
-        {"name": "@class_name", "value": class_name},
-        {"name": "@module_number", "value": str(module_number)}
+        {"name": "$1", "value": class_name},
+        {"name": "$2", "value": str(module_number)}
     ]
-    items = list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
+    items = db.query_raw('answer', query, params)
     if not items:
         return jsonify({
             "message": f"No answer data found for class {class_name} and module {module_number}."
@@ -1200,7 +1218,7 @@ def exercise_review():
     if not quizzes:
         return jsonify({"message": "No quizzes found."}), 404
 
-    answer_container = init_cosmos('answer', DATABASE)
+    db = get_database_adapter()
 
     # Aggregate progress data for each class
     progress_data = {}
@@ -1215,16 +1233,15 @@ def exercise_review():
 
         # Fetch answers for the corresponding quiz
         answer_query = """
-            SELECT c.question, c.correct FROM c
-            WHERE c.PartitionKey = @partition_key AND c.team = @user_id
+            SELECT data->>'question' as question, (data->>'correct')::int as correct
+            FROM answer
+            WHERE data->>'partition_key' = $1 AND data->>'team' = $2
         """
         answer_parameters = [
-            {"name": "@partition_key", "value": partition_key},
-            {"name": "@user_id", "value": session['user'].get('preferred_username').split('@')[0]}
+            {"name": "$1", "value": partition_key},
+            {"name": "$2", "value": session['user'].get('preferred_username').split('@')[0]}
             ]
-        answers = list(answer_container.query_items(
-            query=answer_query, parameters=answer_parameters, enable_cross_partition_query=True
-        ))
+        answers = db.query_raw('answer', answer_query, answer_parameters)
 
         # Filter answers to include only active questions
         filtered_answers = [a for a in answers if str(a["question"]) in active_questions]

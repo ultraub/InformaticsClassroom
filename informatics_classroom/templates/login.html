@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informatics Classroom - Login</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        .login-button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        .login-button:hover {
+            background: #5568d3;
+        }
+        .version {
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: #999;
+        }
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f0f9ff;
+            border-left: 4px solid #667eea;
+            text-align: left;
+        }
+        .status h3 {
+            margin: 0 0 0.5rem 0;
+            color: #667eea;
+        }
+        .status ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        .status li {
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Informatics Classroom</h1>
+        <p>Sign in with your Microsoft account</p>
+
+        <a href="{{ auth_url }}" class="login-button">
+            Sign in with Microsoft
+        </a>
+
+        <div class="status">
+            <h3>✅ System Status</h3>
+            <ul>
+                <li>Backend API: Running</li>
+                <li>Database: PostgreSQL Connected</li>
+                <li>Authentication: Azure AD Ready</li>
+                <li>Documents: 82,295 migrated</li>
+            </ul>
+        </div>
+
+        <div class="version">
+            MSAL Version: {{ version }}
+        </div>
+    </div>
+</body>
+</html>

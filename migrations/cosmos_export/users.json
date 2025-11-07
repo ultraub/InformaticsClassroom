@@ -1,0 +1,1824 @@
+[
+  {
+    "id": "test",
+    "name": "test user",
+    "role": "user",
+    "access": [
+      "pmap",
+      "omop"
+    ],
+    "_rid": "LBUhAIdSXg4BAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4BAAAAAAAAAA==/",
+    "_etag": "\"720045ad-0000-0200-0000-66c2b5430000\"",
+    "_attachments": "attachments/",
+    "_ts": 1724036419
+  },
+  {
+    "id": "test2",
+    "userId": "test2",
+    "name": "test user2",
+    "role": "user",
+    "access": [
+      "pmap",
+      "testclass"
+    ],
+    "_rid": "LBUhAIdSXg4CAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4CAAAAAAAAAA==/",
+    "_etag": "\"79008b6e-0000-0200-0000-66c3da3c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1724111420
+  },
+  {
+    "id": "rbarre16",
+    "userId": "rbarre16",
+    "role": "Admin",
+    "full_name": "Robert Barrett",
+    "email": "rbarre16@jh.edu",
+    "accessible_classes": [
+      "cda",
+      "pmap",
+      "ohdsi24",
+      "fhir23",
+      "fhir22",
+      "fhir25",
+      "imaginf",
+      "cdsonfhir",
+      "test",
+      "TIME2025",
+      "ohdsi25",
+      "testquiz2025"
+    ],
+    "created_at": "2024-12-30T12:00:00Z",
+    "_rid": "LBUhAIdSXg4DAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4DAAAAAAAAAA==/",
+    "_etag": "\"8601f25d-0000-0200-0000-68ffe7d60000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601494
+  },
+  {
+    "id": "test1234",
+    "userId": "test1234",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4EAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4EAAAAAAAAAA==/",
+    "_etag": "\"bf007705-0000-0200-0000-67965efb0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737907963
+  },
+  {
+    "id": "mcook49",
+    "userId": "mcook49",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "imaginf",
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4FAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4FAAAAAAAAAA==/",
+    "_etag": "\"83005777-0000-0200-0000-67e596a90000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099561
+  },
+  {
+    "id": "abrand16",
+    "userId": "abrand16",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4GAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4GAAAAAAAAAA==/",
+    "_etag": "\"83005377-0000-0200-0000-67e596a30000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099555
+  },
+  {
+    "id": "sjadhav5",
+    "userId": "sjadhav5",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4HAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4HAAAAAAAAAA==/",
+    "_etag": "\"5f0533eb-0000-0200-0000-68b76f540000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852052
+  },
+  {
+    "id": "tkwon5",
+    "userId": "tkwon5",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4IAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4IAAAAAAAAAA==/",
+    "_etag": "\"bf007105-0000-0200-0000-67965eef0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737907951
+  },
+  {
+    "id": "wlam17",
+    "userId": "wlam17",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4JAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4JAAAAAAAAAA==/",
+    "_etag": "\"bf006f05-0000-0200-0000-67965eec0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737907948
+  },
+  {
+    "id": "elee228",
+    "userId": "elee228",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4KAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4KAAAAAAAAAA==/",
+    "_etag": "\"bf006d05-0000-0200-0000-67965ee90000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737907945
+  },
+  {
+    "id": "sliu197",
+    "userId": "sliu197",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4LAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4LAAAAAAAAAA==/",
+    "_etag": "\"bf005b05-0000-0200-0000-67965ebd0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737907901
+  },
+  {
+    "id": "ylu175",
+    "userId": "ylu175",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4MAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4MAAAAAAAAAA==/",
+    "_etag": "\"83006877-0000-0200-0000-67e596be0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099582
+  },
+  {
+    "id": "glyons5",
+    "userId": "glyons5",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir",
+      "ohdsi24",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4NAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4NAAAAAAAAAA==/",
+    "_etag": "\"8601aa6b-0000-0200-0000-68ffe83d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601597
+  },
+  {
+    "id": "jmercad4",
+    "userId": "jmercad4",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4OAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4OAAAAAAAAAA==/",
+    "_etag": "\"7d0051cd-0000-0200-0000-67e1d7b80000\"",
+    "_attachments": "attachments/",
+    "_ts": 1742854072
+  },
+  {
+    "id": "pnagy2",
+    "userId": "pnagy2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4PAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4PAAAAAAAAAA==/",
+    "_etag": "\"83007077-0000-0200-0000-67e596cf0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099599
+  },
+  {
+    "id": "msan1",
+    "userId": "msan1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4QAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4QAAAAAAAAAA==/",
+    "_etag": "\"83007977-0000-0200-0000-67e596dc0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099612
+  },
+  {
+    "id": "tsippel1",
+    "userId": "tsippel1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "fhir25",
+      "cdsonfhir"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4RAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4RAAAAAAAAAA==/",
+    "_etag": "\"83003e77-0000-0200-0000-67e5967e0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099518
+  },
+  {
+    "id": "tvong2",
+    "userId": "tvong2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4SAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4SAAAAAAAAAA==/",
+    "_etag": "\"92003ff6-0000-0200-0000-68c0c6cb0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757464267
+  },
+  {
+    "id": "qwang168",
+    "userId": "qwang168",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4TAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4TAAAAAAAAAA==/",
+    "_etag": "\"820024b5-0000-0200-0000-67e4967c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033980
+  },
+  {
+    "id": "mxiong5",
+    "userId": "mxiong5",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir23",
+      "fhir22",
+      "ohdsi24"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4UAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4UAAAAAAAAAA==/",
+    "_etag": "\"bf05c146-0000-0200-0000-68bca2e20000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757192930
+  },
+  {
+    "id": "fallguy",
+    "userId": "fallguy",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4VAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4VAAAAAAAAAA==/",
+    "_etag": "\"bf005f03-0000-0200-0000-679657ad0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1737906093
+  },
+  {
+    "id": "shong59",
+    "userId": "shong59",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir22"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4WAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4WAAAAAAAAAA==/",
+    "_etag": "\"d20083bd-0000-0200-0000-679ab0430000\"",
+    "_attachments": "attachments/",
+    "_ts": 1738190915
+  },
+  {
+    "id": "aalagha2",
+    "userId": "aalagha2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4XAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4XAAAAAAAAAA==/",
+    "_etag": "\"6a00ed41-0000-0200-0000-67a039cd0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1738553805
+  },
+  {
+    "id": "oakkaya2",
+    "userId": "oakkaya2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "fhir22"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4YAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4YAAAAAAAAAA==/",
+    "_etag": "\"8000a6b8-0000-0200-0000-67a150140000\"",
+    "_attachments": "attachments/",
+    "_ts": 1738625044
+  },
+  {
+    "id": "wpark11",
+    "userId": "wpark11",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4ZAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4ZAAAAAAAAAA==/",
+    "_etag": "\"7d005422-0000-0200-0000-67e18e120000\"",
+    "_attachments": "attachments/",
+    "_ts": 1742835218
+  },
+  {
+    "id": "bgenereaux",
+    "userId": "bgenereaux",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4aAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4aAAAAAAAAAA==/",
+    "_etag": "\"7d00a058-0000-0200-0000-67e1b6150000\"",
+    "_attachments": "attachments/",
+    "_ts": 1742845461
+  },
+  {
+    "id": "blake.dewey",
+    "userId": "blake.dewey",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4bAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4bAAAAAAAAAA==/",
+    "_etag": "\"7d00aa58-0000-0200-0000-67e1b6300000\"",
+    "_attachments": "attachments/",
+    "_ts": 1742845488
+  },
+  {
+    "id": "bdewey3",
+    "userId": "bdewey3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4cAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4cAAAAAAAAAA==/",
+    "_etag": "\"7d008b76-0000-0200-0000-67e1bb830000\"",
+    "_attachments": "attachments/",
+    "_ts": 1742846851
+  },
+  {
+    "id": "bgenere2",
+    "userId": "bgenere2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf",
+      "cda"
+    ],
+    "role": "Admin",
+    "_rid": "LBUhAIdSXg4dAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4dAAAAAAAAAA==/",
+    "_etag": "\"9800e301-0000-0200-0000-68f159210000\"",
+    "_attachments": "attachments/",
+    "_ts": 1760647457
+  },
+  {
+    "id": "iali12",
+    "userId": "iali12",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4eAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4eAAAAAAAAAA==/",
+    "_etag": "\"820000b5-0000-0200-0000-67e4962f0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033903
+  },
+  {
+    "id": "agamara1",
+    "userId": "agamara1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4fAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4fAAAAAAAAAA==/",
+    "_etag": "\"820008b5-0000-0200-0000-67e496410000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033921
+  },
+  {
+    "id": "lgoedde1",
+    "userId": "lgoedde1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4gAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4gAAAAAAAAAA==/",
+    "_etag": "\"82000db5-0000-0200-0000-67e496490000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033929
+  },
+  {
+    "id": "fislam3",
+    "userId": "fislam3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4hAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4hAAAAAAAAAA==/",
+    "_etag": "\"820010b5-0000-0200-0000-67e496510000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033937
+  },
+  {
+    "id": "slateef2",
+    "userId": "slateef2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4iAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4iAAAAAAAAAA==/",
+    "_etag": "\"820011b5-0000-0200-0000-67e496580000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033944
+  },
+  {
+    "id": "sluo10",
+    "userId": "sluo10",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4jAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4jAAAAAAAAAA==/",
+    "_etag": "\"820014b5-0000-0200-0000-67e4965f0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033951
+  },
+  {
+    "id": "xluo42",
+    "userId": "xluo42",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4kAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4kAAAAAAAAAA==/",
+    "_etag": "\"820019b5-0000-0200-0000-67e496650000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033957
+  },
+  {
+    "id": "mqi8",
+    "userId": "mqi8",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4lAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4lAAAAAAAAAA==/",
+    "_etag": "\"82001db5-0000-0200-0000-67e4966e0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033966
+  },
+  {
+    "id": "crutled3",
+    "userId": "crutled3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4mAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4mAAAAAAAAAA==/",
+    "_etag": "\"820022b5-0000-0200-0000-67e496750000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033973
+  },
+  {
+    "id": "hwoo12",
+    "userId": "hwoo12",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4nAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4nAAAAAAAAAA==/",
+    "_etag": "\"820027b5-0000-0200-0000-67e496850000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033989
+  },
+  {
+    "id": "xzhou86",
+    "userId": "xzhou86",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "imaginf"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4oAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4oAAAAAAAAAA==/",
+    "_etag": "\"820029b5-0000-0200-0000-67e4968c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743033996
+  },
+  {
+    "id": "slee619",
+    "userId": "slee619",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4pAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4pAAAAAAAAAA==/",
+    "_etag": "\"83003677-0000-0200-0000-67e5966a0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099498
+  },
+  {
+    "id": "msyaile1",
+    "userId": "msyaile1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg4qAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4qAAAAAAAAAA==/",
+    "_etag": "\"83003877-0000-0200-0000-67e596730000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099507
+  },
+  {
+    "id": "djohn196",
+    "userId": "djohn196",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4rAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4rAAAAAAAAAA==/",
+    "_etag": "\"83005d77-0000-0200-0000-67e596b00000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099568
+  },
+  {
+    "id": "kgourab1",
+    "userId": "kgourab1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4sAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4sAAAAAAAAAA==/",
+    "_etag": "\"83006277-0000-0200-0000-67e596b60000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099574
+  },
+  {
+    "id": "ksadows3",
+    "userId": "ksadows3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4tAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4tAAAAAAAAAA==/",
+    "_etag": "\"83007577-0000-0200-0000-67e596d60000\"",
+    "_attachments": "attachments/",
+    "_ts": 1743099606
+  },
+  {
+    "id": "arobe107",
+    "userId": "arobe107",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cdsonfhir"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4uAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4uAAAAAAAAAA==/",
+    "_etag": "\"29003df5-0000-0200-0000-67f957db0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1744394203
+  },
+  {
+    "id": "bmarti86",
+    "userId": "bmarti86",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "TIME2025",
+      "OHDSI24",
+      "ohdsi24"
+    ],
+    "role": "Admin",
+    "_rid": "LBUhAIdSXg4vAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4vAAAAAAAAAA==/",
+    "_etag": "\"bf054545-0000-0200-0000-68bca2c10000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757192897
+  },
+  {
+    "id": "dantov1",
+    "userId": "dantov1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4wAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4wAAAAAAAAAA==/",
+    "_etag": "\"8601be64-0000-0200-0000-68ffe7fd0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601533
+  },
+  {
+    "id": "sazimia1",
+    "userId": "sazimia1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4xAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4xAAAAAAAAAA==/",
+    "_etag": "\"86018665-0000-0200-0000-68ffe8010000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601537
+  },
+  {
+    "id": "abenso21",
+    "userId": "abenso21",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4yAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4yAAAAAAAAAA==/",
+    "_etag": "\"9200abf2-0000-0200-0000-68c0c68c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757464204
+  },
+  {
+    "id": "hlee292",
+    "userId": "hlee292",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "TIME2025"
+    ],
+    "role": "Admin",
+    "_rid": "LBUhAIdSXg4zAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4zAAAAAAAAAA==/",
+    "_etag": "\"640055e6-0000-0200-0000-68c881610000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757970785
+  },
+  {
+    "id": "sbhand15",
+    "userId": "sbhand15",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg40AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg40AAAAAAAAAA==/",
+    "_etag": "\"5f05dee4-0000-0200-0000-68b76f1b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756851995
+  },
+  {
+    "id": "jcomo2",
+    "userId": "jcomo2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg41AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg41AAAAAAAAAA==/",
+    "_etag": "\"5f0584e5-0000-0200-0000-68b76f210000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852001
+  },
+  {
+    "id": "icozzon1",
+    "userId": "icozzon1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg42AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg42AAAAAAAAAA==/",
+    "_etag": "\"86012968-0000-0200-0000-68ffe81b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601563
+  },
+  {
+    "id": "adavi239",
+    "userId": "adavi239",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg43AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg43AAAAAAAAAA==/",
+    "_etag": "\"5f05fce6-0000-0200-0000-68b76f2e0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852014
+  },
+  {
+    "id": "kdounis1",
+    "userId": "kdounis1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg44AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg44AAAAAAAAAA==/",
+    "_etag": "\"5f0576e7-0000-0200-0000-68b76f340000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852020
+  },
+  {
+    "id": "yhan98",
+    "userId": "yhan98",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "ohdsi24",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg45AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg45AAAAAAAAAA==/",
+    "_etag": "\"8601d968-0000-0200-0000-68ffe8220000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601570
+  },
+  {
+    "id": "yhuan317",
+    "userId": "yhuan317",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg46AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg46AAAAAAAAAA==/",
+    "_etag": "\"8601b269-0000-0200-0000-68ffe8260000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601574
+  },
+  {
+    "id": "zkhoo1",
+    "userId": "zkhoo1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg47AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg47AAAAAAAAAA==/",
+    "_etag": "\"5f05a5eb-0000-0200-0000-68b76f590000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852057
+  },
+  {
+    "id": "jli489",
+    "userId": "jli489",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg48AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg48AAAAAAAAAA==/",
+    "_etag": "\"5f0595ec-0000-0200-0000-68b76f620000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852066
+  },
+  {
+    "id": "zli362",
+    "userId": "zli362",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg49AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg49AAAAAAAAAA==/",
+    "_etag": "\"8601196b-0000-0200-0000-68ffe8350000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601589
+  },
+  {
+    "id": "yliu709",
+    "userId": "yliu709",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4+AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4+AAAAAAAAAA==/",
+    "_etag": "\"5f0541ee-0000-0200-0000-68b76f720000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852082
+  },
+  {
+    "id": "jmatthi2",
+    "userId": "jmatthi2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg4-AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg4-AAAAAAAAAA==/",
+    "_etag": "\"8601ed6b-0000-0200-0000-68ffe8420000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601602
+  },
+  {
+    "id": "fmazari1",
+    "userId": "fmazari1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5AAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5AAAAAAAAAAA==/",
+    "_etag": "\"8601436c-0000-0200-0000-68ffe8460000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601606
+  },
+  {
+    "id": "jnoh10",
+    "userId": "jnoh10",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5BAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5BAAAAAAAAAA==/",
+    "_etag": "\"8601fc6c-0000-0200-0000-68ffe8500000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601616
+  },
+  {
+    "id": "ipiment1",
+    "userId": "ipiment1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5CAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5CAAAAAAAAAA==/",
+    "_etag": "\"5f05f2f2-0000-0200-0000-68b76f9c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852124
+  },
+  {
+    "id": "kprende7",
+    "userId": "kprende7",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5DAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5DAAAAAAAAAA==/",
+    "_etag": "\"5f05c2f3-0000-0200-0000-68b76fa20000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852130
+  },
+  {
+    "id": "nqures12",
+    "userId": "nqures12",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5EAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5EAAAAAAAAAA==/",
+    "_etag": "\"8601126e-0000-0200-0000-68ffe8620000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601634
+  },
+  {
+    "id": "sragha11",
+    "userId": "sragha11",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5FAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5FAAAAAAAAAA==/",
+    "_etag": "\"5f0561f5-0000-0200-0000-68b76fb00000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852144
+  },
+  {
+    "id": "arajpur1",
+    "userId": "arajpur1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5GAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5GAAAAAAAAAA==/",
+    "_etag": "\"86015e6e-0000-0200-0000-68ffe8660000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601638
+  },
+  {
+    "id": "erashid1",
+    "userId": "erashid1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5HAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5HAAAAAAAAAA==/",
+    "_etag": "\"6005b725-0000-0200-0000-68b7714d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852557
+  },
+  {
+    "id": "hravind1",
+    "userId": "hravind1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5IAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5IAAAAAAAAAA==/",
+    "_etag": "\"8601b46e-0000-0200-0000-68ffe86b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601643
+  },
+  {
+    "id": "rsood6",
+    "userId": "rsood6",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5JAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5JAAAAAAAAAA==/",
+    "_etag": "\"8601956f-0000-0200-0000-68ffe8770000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601655
+  },
+  {
+    "id": "gtang10",
+    "userId": "gtang10",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5KAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5KAAAAAAAAAA==/",
+    "_etag": "\"86015970-0000-0200-0000-68ffe8830000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601667
+  },
+  {
+    "id": "svallad2",
+    "userId": "svallad2",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5LAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5LAAAAAAAAAA==/",
+    "_etag": "\"86010771-0000-0200-0000-68ffe88d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601677
+  },
+  {
+    "id": "slee364",
+    "userId": "slee364",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5MAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5MAAAAAAAAAA==/",
+    "_etag": "\"60059629-0000-0200-0000-68b7716d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852589
+  },
+  {
+    "id": "mzhan180",
+    "userId": "mzhan180",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5NAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5NAAAAAAAAAA==/",
+    "_etag": "\"8601d471-0000-0200-0000-68ffe8990000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601689
+  },
+  {
+    "id": "dzhang73",
+    "userId": "dzhang73",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5OAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5OAAAAAAAAAA==/",
+    "_etag": "\"6005de2a-0000-0200-0000-68b771790000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756852601
+  },
+  {
+    "id": "cbarbat1",
+    "userId": "cbarbat1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "pmap",
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5PAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5PAAAAAAAAAA==/",
+    "_etag": "\"86013466-0000-0200-0000-68ffe8060000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601542
+  },
+  {
+    "id": "kwizner1@jh.edu",
+    "userId": "kwizner1@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5QAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5QAAAAAAAAAA==/",
+    "_etag": "\"6105fe6d-0000-0200-0000-68b77c370000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855351
+  },
+  {
+    "id": "rkilpat3@jh.edu",
+    "userId": "rkilpat3@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5RAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5RAAAAAAAAAA==/",
+    "_etag": "\"61052f71-0000-0200-0000-68b77c530000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855379
+  },
+  {
+    "id": "abenso21@jh.edu",
+    "userId": "abenso21@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5SAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5SAAAAAAAAAA==/",
+    "_etag": "\"6105b179-0000-0200-0000-68b77ca00000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855456
+  },
+  {
+    "id": "ychen578@jh.edu",
+    "userId": "ychen578@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5TAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5TAAAAAAAAAA==/",
+    "_etag": "\"61058a7a-0000-0200-0000-68b77ca90000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855465
+  },
+  {
+    "id": "jfaneit1@jh.edu",
+    "userId": "jfaneit1@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5UAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5UAAAAAAAAAA==/",
+    "_etag": "\"7b00fc66-0000-0200-0000-68c9a1180000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758044440
+  },
+  {
+    "id": "yhan98@jh.edu",
+    "userId": "yhan98@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5VAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5VAAAAAAAAAA==/",
+    "_etag": "\"6105de7c-0000-0200-0000-68b77cc00000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855488
+  },
+  {
+    "id": "elamber7@jh.edu",
+    "userId": "elamber7@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5WAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5WAAAAAAAAAA==/",
+    "_etag": "\"6105417f-0000-0200-0000-68b77cd70000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855511
+  },
+  {
+    "id": "glyons5@jh.edu",
+    "userId": "glyons5@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5XAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5XAAAAAAAAAA==/",
+    "_etag": "\"6105a380-0000-0200-0000-68b77ce30000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855523
+  },
+  {
+    "id": "jmessie1@jh.edu",
+    "userId": "jmessie1@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5YAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5YAAAAAAAAAA==/",
+    "_etag": "\"6105b081-0000-0200-0000-68b77cee0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855534
+  },
+  {
+    "id": "omobash1@jh.edu",
+    "userId": "omobash1@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5ZAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5ZAAAAAAAAAA==/",
+    "_etag": "\"6105ec82-0000-0200-0000-68b77cf80000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855544
+  },
+  {
+    "id": "nqures12@jh.edu",
+    "userId": "nqures12@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5aAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5aAAAAAAAAAA==/",
+    "_etag": "\"6105de83-0000-0200-0000-68b77d010000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855553
+  },
+  {
+    "id": "tvong2@jh.edu",
+    "userId": "tvong2@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5bAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5bAAAAAAAAAA==/",
+    "_etag": "\"61054685-0000-0200-0000-68b77d0f0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855567
+  },
+  {
+    "id": "jwu197@jh.edu",
+    "userId": "jwu197@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5cAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5cAAAAAAAAAA==/",
+    "_etag": "\"61053186-0000-0200-0000-68b77d180000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855576
+  },
+  {
+    "id": "dzhang73@jh.edu",
+    "userId": "dzhang73@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5dAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5dAAAAAAAAAA==/",
+    "_etag": "\"61056387-0000-0200-0000-68b77d230000\"",
+    "_attachments": "attachments/",
+    "_ts": 1756855587
+  },
+  {
+    "id": "mxiong5@jh.edu",
+    "userId": "mxiong5@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg5eAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5eAAAAAAAAAA==/",
+    "_etag": "\"bf050447-0000-0200-0000-68bca2e70000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757192935
+  },
+  {
+    "id": "dboyce3",
+    "userId": "dboyce3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Instructor",
+    "_rid": "LBUhAIdSXg5fAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5fAAAAAAAAAA==/",
+    "_etag": "\"66007fac-0000-0200-0000-68c8ad0d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1757981965
+  },
+  {
+    "id": "jfaneit1",
+    "userId": "jfaneit1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5gAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5gAAAAAAAAAA==/",
+    "_etag": "\"7b009067-0000-0200-0000-68c9a11e0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758044446
+  },
+  {
+    "id": "Yhan98@jh.edu",
+    "userId": "Yhan98@jh.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5hAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5hAAAAAAAAAA==/",
+    "_etag": "\"970078a9-0000-0200-0000-68cc16d90000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758205657
+  },
+  {
+    "id": "Yhan98@jhmi.edu",
+    "userId": "Yhan98@jhmi.edu",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5iAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5iAAAAAAAAAA==/",
+    "_etag": "\"970099ac-0000-0200-0000-68cc17010000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758205697
+  },
+  {
+    "id": "Yhan98",
+    "userId": "Yhan98",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5jAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5jAAAAAAAAAA==/",
+    "_etag": "\"970044ad-0000-0200-0000-68cc170b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758205707
+  },
+  {
+    "id": "omobash1",
+    "userId": "omobash1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "ohdsi24"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5kAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5kAAAAAAAAAA==/",
+    "_etag": "\"0101c04d-0000-0200-0000-68d3086c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1758660716
+  },
+  {
+    "id": "testquiz2025",
+    "userId": "testquiz2025",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "rbarre16"
+    ],
+    "role": "Admin",
+    "_rid": "LBUhAIdSXg5lAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5lAAAAAAAAAA==/",
+    "_etag": "\"86003ca6-0000-0200-0000-68e5578c0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1759860620
+  },
+  {
+    "id": "mangel6",
+    "userId": "mangel6",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5mAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5mAAAAAAAAAA==/",
+    "_etag": "\"8601fd61-0000-0200-0000-68ffe7f40000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601524
+  },
+  {
+    "id": "kaninko1",
+    "userId": "kaninko1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5nAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5nAAAAAAAAAA==/",
+    "_etag": "\"8601ee62-0000-0200-0000-68ffe7f90000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601529
+  },
+  {
+    "id": "qchen34",
+    "userId": "qchen34",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5oAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5oAAAAAAAAAA==/",
+    "_etag": "\"8601ba66-0000-0200-0000-68ffe80d0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601549
+  },
+  {
+    "id": "ychen578",
+    "userId": "ychen578",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5pAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5pAAAAAAAAAA==/",
+    "_etag": "\"5c002685-0000-0200-0000-6908cf420000\"",
+    "_attachments": "attachments/",
+    "_ts": 1762185026
+  },
+  {
+    "id": "schoi86",
+    "userId": "schoi86",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5qAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5qAAAAAAAAAA==/",
+    "_etag": "\"8601a867-0000-0200-0000-68ffe8170000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601559
+  },
+  {
+    "id": "pjiang9",
+    "userId": "pjiang9",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5rAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5rAAAAAAAAAA==/",
+    "_etag": "\"8601596a-0000-0200-0000-68ffe82b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601579
+  },
+  {
+    "id": "sju11",
+    "userId": "sju11",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5sAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5sAAAAAAAAAA==/",
+    "_etag": "\"8601d36a-0000-0200-0000-68ffe8300000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601584
+  },
+  {
+    "id": "yliu663",
+    "userId": "yliu663",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5tAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5tAAAAAAAAAA==/",
+    "_etag": "\"8601656b-0000-0200-0000-68ffe8390000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601593
+  },
+  {
+    "id": "nharsh3",
+    "userId": "nharsh3",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5uAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5uAAAAAAAAAA==/",
+    "_etag": "\"86019c6c-0000-0200-0000-68ffe84b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601611
+  },
+  {
+    "id": "onurude1",
+    "userId": "onurude1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5vAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5vAAAAAAAAAA==/",
+    "_etag": "\"8601336d-0000-0200-0000-68ffe8550000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601621
+  },
+  {
+    "id": "apark52",
+    "userId": "apark52",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5wAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5wAAAAAAAAAA==/",
+    "_etag": "\"8601736d-0000-0200-0000-68ffe8590000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601625
+  },
+  {
+    "id": "kquansa1",
+    "userId": "kquansa1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5xAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5xAAAAAAAAAA==/",
+    "_etag": "\"8601d06d-0000-0200-0000-68ffe85e0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601630
+  },
+  {
+    "id": "psavio1",
+    "userId": "psavio1",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5yAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5yAAAAAAAAAA==/",
+    "_etag": "\"8601096f-0000-0200-0000-68ffe8700000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601648
+  },
+  {
+    "id": "wtan19",
+    "userId": "wtan19",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg5zAAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg5zAAAAAAAAAA==/",
+    "_etag": "\"8601c66f-0000-0200-0000-68ffe87b0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601659
+  },
+  {
+    "id": "athom258",
+    "userId": "athom258",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg50AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg50AAAAAAAAAA==/",
+    "_etag": "\"8601b170-0000-0200-0000-68ffe8880000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601672
+  },
+  {
+    "id": "hwang259",
+    "userId": "hwang259",
+    "full_name": "",
+    "email": "",
+    "accessible_classes": [
+      "cda"
+    ],
+    "role": "Student",
+    "_rid": "LBUhAIdSXg51AAAAAAAAAA==",
+    "_self": "dbs/LBUhAA==/colls/LBUhAIdSXg4=/docs/LBUhAIdSXg51AAAAAAAAAA==/",
+    "_etag": "\"86019a71-0000-0200-0000-68ffe8940000\"",
+    "_attachments": "attachments/",
+    "_ts": 1761601684
+  }
+]

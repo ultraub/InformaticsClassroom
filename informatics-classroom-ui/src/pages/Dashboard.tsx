@@ -7,6 +7,8 @@ import {
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/classNames';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../services/api';
 
 interface StatCardProps {
   title: string;
@@ -51,66 +53,42 @@ function StatCard({ title, value, icon: Icon, change, changeType }: StatCardProp
 export function Dashboard() {
   const { user } = useAuth();
 
-  // Mock data - will be replaced with real API calls
+  // Fetch real stats from API
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const response = await apiClient.get<{
+        totalUsers: number;
+        activeQuizzes: number;
+        tokensGenerated: number;
+        totalAnswers: number;
+      }>('/api/dashboard/stats');
+      return response.data;
+    },
+    staleTime: 60000, // Refetch after 1 minute
+  });
+
+  // Use real data from API
   const stats = [
     {
       title: 'Total Users',
-      value: 127,
+      value: statsData?.totalUsers || 0,
       icon: UsersIcon,
-      change: '+12%',
-      changeType: 'increase' as const,
     },
     {
-      title: 'Active Permissions',
-      value: 45,
-      icon: ShieldCheckIcon,
-      change: '+5%',
-      changeType: 'increase' as const,
-    },
-    {
-      title: 'Quizzes',
-      value: 23,
+      title: 'Active Quizzes',
+      value: statsData?.activeQuizzes || 0,
       icon: DocumentTextIcon,
-      change: '+3%',
-      changeType: 'increase' as const,
     },
     {
-      title: 'Assignments',
-      value: 18,
+      title: 'Tokens Generated',
+      value: statsData?.tokensGenerated || 0,
+      icon: ShieldCheckIcon,
+    },
+    {
+      title: 'Total Answers',
+      value: statsData?.totalAnswers?.toLocaleString() || 0,
       icon: ClipboardDocumentListIcon,
-      change: '-2%',
-      changeType: 'decrease' as const,
-    },
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      user: 'John Doe',
-      action: 'Updated permissions',
-      target: 'User: jane.smith',
-      time: '2 minutes ago',
-    },
-    {
-      id: 2,
-      user: 'Jane Smith',
-      action: 'Created quiz',
-      target: 'Quiz: Introduction to Python',
-      time: '15 minutes ago',
-    },
-    {
-      id: 3,
-      user: 'Admin User',
-      action: 'Assigned role',
-      target: 'User: mike.johnson → Instructor',
-      time: '1 hour ago',
-    },
-    {
-      id: 4,
-      user: 'Sarah Wilson',
-      action: 'Modified assignment',
-      target: 'Assignment: Week 1 Homework',
-      time: '2 hours ago',
     },
   ];
 
@@ -133,39 +111,8 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Two column layout */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <Card title="Recent Activity" padding="none">
-          <div className="divide-y divide-gray-200">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="px-6 py-4 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {activity.user}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {activity.action} • {activity.target}
-                    </p>
-                  </div>
-                  <div className="ml-4 flex-shrink-0">
-                    <span className="text-xs text-gray-400">{activity.time}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-            <a
-              href="/audit"
-              className="text-sm font-medium text-primary-600 hover:text-primary-500"
-            >
-              View all activity →
-            </a>
-          </div>
-        </Card>
-
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 gap-5">
         {/* Quick Actions */}
         <Card title="Quick Actions" padding="md">
           <div className="grid grid-cols-2 gap-4">
@@ -188,7 +135,7 @@ export function Dashboard() {
               </span>
             </a>
             <a
-              href="/quizzes"
+              href="/quiz/create"
               className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-sm transition-all"
             >
               <DocumentTextIcon className="h-8 w-8 text-primary-600 mb-2" />

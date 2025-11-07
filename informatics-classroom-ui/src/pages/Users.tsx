@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon,
-  FunnelIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
@@ -10,7 +9,7 @@ import {
 import { usersService } from '../services/users';
 import { Card, Button, Input, Badge } from '../components/common';
 import { UserEditModal } from '../components/users/UserEditModal';
-import { Role, UserFilter, User } from '../types';
+import { Role, type UserFilter, type User } from '../types';
 import { classNames } from '../utils/classNames';
 
 export function Users() {

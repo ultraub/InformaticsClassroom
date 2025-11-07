@@ -132,47 +132,110 @@ def require_jwt_token(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        from flask import session
+
         token = get_token_from_header()
 
-        if not token:
-            return jsonify({
-                'error': 'Authorization token required',
-                'message': 'Missing Authorization header with Bearer token'
-            }), 401
+        # Try JWT token first
+        if token:
+            try:
+                payload = decode_token(token)
 
-        try:
-            payload = decode_token(token)
+                # Verify it's an access token
+                if payload.get('type') != 'access':
+                    return jsonify({
+                        'error': 'Invalid token type',
+                        'message': 'Expected access token'
+                    }), 401
 
-            # Verify it's an access token
-            if payload.get('type') != 'access':
+                # Attach user data to request for use in route handler
+                request.jwt_user = payload
+
+                return f(*args, **kwargs)
+
+            except jwt.ExpiredSignatureError:
                 return jsonify({
-                    'error': 'Invalid token type',
-                    'message': 'Expected access token'
+                    'error': 'Token expired',
+                    'message': 'Access token has expired. Please refresh your token.'
                 }), 401
 
-            # Attach user data to request for use in route handler
-            request.jwt_user = payload
+            except jwt.InvalidTokenError as e:
+                return jsonify({
+                    'error': 'Invalid token',
+                    'message': str(e)
+                }), 401
+
+        # Fallback to session-based authentication (for development mode)
+        if session.get('user'):
+            user_data = session['user']
+            user_id = user_data.get('preferred_username', '').split('@')[0]
+
+            # Get full user data from database to include class memberships
+            from informatics_classroom.database.factory import get_database_adapter
+            db = get_database_adapter()
+            db_user = db.get('users', user_id)
+
+            # Build class_memberships from database with backward compatibility
+            class_memberships = {}
+            class_roles = {}
+            accessible_classes = []
+
+            if db_user:
+                # Try new class_memberships structure first
+                class_memberships = db_user.get('class_memberships', {})
+
+                # Fallback to classRoles (intermediate format)
+                if not class_memberships:
+                    class_roles = db_user.get('classRoles', {})
+                    if class_roles:
+                        # Convert classRoles to class_memberships format
+                        for class_id, role in class_roles.items():
+                            class_memberships[class_id] = {'role': role}
+
+                # Fallback to accessible_classes (old format)
+                accessible_classes = db_user.get('accessible_classes', [])
+                if not class_memberships and accessible_classes:
+                    db_role = db_user.get('role', '').lower()
+                    if db_role in ['admin', 'instructor']:
+                        inferred_role = 'instructor'
+                    elif db_role == 'ta':
+                        inferred_role = 'ta'
+                    elif db_role == 'grader':
+                        inferred_role = 'grader'
+                    else:
+                        inferred_role = 'student'
+
+                    for class_id in accessible_classes:
+                        class_memberships[class_id] = {'role': inferred_role}
+                        class_roles[class_id] = inferred_role
+
+            # Convert session user to JWT-compatible format
+            request.jwt_user = {
+                'user_id': user_id,
+                'email': user_data.get('email', user_data.get('preferred_username', '')),
+                'display_name': user_data.get('name', ''),
+                'roles': user_data.get('roles', ['student']),
+                'class_memberships': class_memberships,  # New: structured class memberships
+                'classRoles': class_roles,  # Legacy: simple class->role mapping
+                'accessible_classes': accessible_classes,  # Legacy: for backward compatibility
+                'role': db_user.get('role', 'student') if db_user else 'student',  # Legacy global role
+                'type': 'session'  # Mark as session-based for tracking
+            }
 
             return f(*args, **kwargs)
 
-        except jwt.ExpiredSignatureError:
-            return jsonify({
-                'error': 'Token expired',
-                'message': 'Access token has expired. Please refresh your token.'
-            }), 401
-
-        except jwt.InvalidTokenError as e:
-            return jsonify({
-                'error': 'Invalid token',
-                'message': str(e)
-            }), 401
+        # No authentication found
+        return jsonify({
+            'error': 'Authorization required',
+            'message': 'Missing Authorization header with Bearer token or valid session'
+        }), 401
 
     return decorated_function
 
 
 def require_role(required_roles):
     """
-    Decorator to require specific user roles.
+    Decorator to require specific user roles with hierarchy support.
 
     Args:
         required_roles (list): List of allowed roles (e.g., ['admin', 'instructor'])
@@ -193,16 +256,53 @@ def require_role(required_roles):
                     'message': 'Must use @require_jwt_token before @require_role'
                 }), 401
 
-            user_roles = request.jwt_user.get('roles', [])
+            from informatics_classroom.auth.permissions import has_permission, get_role_permissions_with_inheritance
 
-            # Check if user has any of the required roles
-            if not any(role in user_roles for role in required_roles):
-                return jsonify({
-                    'error': 'Insufficient permissions',
-                    'message': f'Required role: {" or ".join(required_roles)}'
-                }), 403
+            user = request.jwt_user
+            user_roles = user.get('roles', [])
 
-            return f(*args, **kwargs)
+            # Normalize roles to lowercase for comparison
+            user_roles = [r.lower() for r in user_roles if r]
+
+            # Admin always passes
+            if 'admin' in user_roles:
+                return f(*args, **kwargs)
+
+            # Check if user has any of the required roles directly
+            required_roles_lower = [r.lower() for r in required_roles]
+            if any(role in user_roles for role in required_roles_lower):
+                return f(*args, **kwargs)
+
+            # Check role hierarchy - if user has a higher role that inherits the required role
+            ROLE_HIERARCHY = {
+                'admin': ['instructor', 'ta', 'grader', 'student'],
+                'instructor': ['ta', 'grader', 'student'],
+                'ta': ['student'],
+                'grader': ['student'],
+                'student': [],
+            }
+
+            for user_role in user_roles:
+                inherited_roles = ROLE_HIERARCHY.get(user_role, [])
+                if any(req_role in inherited_roles for req_role in required_roles_lower):
+                    return f(*args, **kwargs)
+
+            # Check class-specific roles
+            class_roles = user.get('classRoles', {})
+            if isinstance(class_roles, dict):
+                for class_role in class_roles.values():
+                    class_role_lower = class_role.lower() if class_role else ''
+                    if class_role_lower in required_roles_lower:
+                        return f(*args, **kwargs)
+                    # Check if class role inherits required role
+                    inherited_roles = ROLE_HIERARCHY.get(class_role_lower, [])
+                    if any(req_role in inherited_roles for req_role in required_roles_lower):
+                        return f(*args, **kwargs)
+
+            return jsonify({
+                'error': 'Insufficient permissions',
+                'message': f'Required role: {" or ".join(required_roles)}'
+            }), 403
 
         return decorated_function
     return decorator

@@ -5,48 +5,54 @@ export interface User {
   email: string;
   displayName: string;
   roles: Role[];
-  classRoles: ClassRole[];
+  classRoles?: Record<string, string>; // Old format: Map of class_id -> role (e.g., {"pmap": "instructor", "omop": "student"})
+  class_memberships?: Array<{class_id: string; role: string; assigned_at?: string; assigned_by?: string}>; // New format
+  permissions?: Permission[]; // Direct permissions assigned to user
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
 }
 
-// Role types matching backend enums
-export enum Role {
-  ADMIN = 'admin',
-  INSTRUCTOR = 'instructor',
-  STUDENT = 'student',
-  TA = 'ta'
-}
+// Role types matching backend enums with inheritance
+export const Role = {
+  ADMIN: 'admin',
+  INSTRUCTOR: 'instructor',
+  TA: 'ta',
+  STUDENT: 'student'
+} as const;
+export type Role = typeof Role[keyof typeof Role];
 
-export enum ClassRole {
-  CLASS_ADMIN = 'class_admin',
-  CLASS_INSTRUCTOR = 'class_instructor',
-  CLASS_TA = 'class_ta',
-  CLASS_STUDENT = 'class_student',
-  CLASS_VIEWER = 'class_viewer'
-}
+export const ClassRole = {
+  CLASS_ADMIN: 'class_admin',
+  CLASS_INSTRUCTOR: 'class_instructor',
+  CLASS_TA: 'class_ta',
+  CLASS_STUDENT: 'class_student',
+  CLASS_VIEWER: 'class_viewer'
+} as const;
+export type ClassRole = typeof ClassRole[keyof typeof ClassRole];
 
 // Permission types
-export enum Permission {
-  QUIZ_VIEW = 'quiz.view',
-  QUIZ_CREATE = 'quiz.create',
-  QUIZ_MODIFY = 'quiz.modify',
-  QUIZ_DELETE = 'quiz.delete',
-  QUIZ_SHARE = 'quiz.share',
-  QUIZ_COLLABORATE = 'quiz.collaborate',
-  ASSIGNMENT_VIEW = 'assignment.view',
-  ASSIGNMENT_CREATE = 'assignment.create',
-  ASSIGNMENT_MANAGE = 'assignment.manage',
-  ASSIGNMENT_GRADE = 'assignment.grade',
-  USER_MANAGE = 'user.manage',
-  USER_VIEW = 'user.view',
-  TOKEN_GENERATE = 'token.generate',
-  CLASS_ADMIN = 'class.admin',
-  CLASS_VIEW_ANALYTICS = 'class.view_analytics',
-  SYSTEM_ADMIN = 'system.admin',
-  SYSTEM_VIEW_LOGS = 'system.view_logs'
-}
+export const Permission = {
+  // Quiz Management (quizzes and assignments are the same thing)
+  QUIZ_VIEW: 'quiz.view',
+  QUIZ_CREATE: 'quiz.create',
+  QUIZ_MODIFY: 'quiz.modify',
+  QUIZ_DELETE: 'quiz.delete',
+
+  // User Management
+  USER_MANAGE: 'user.manage',
+  USER_VIEW: 'user.view',
+
+  // Class Management
+  TOKEN_GENERATE: 'token.generate',
+  CLASS_ADMIN: 'class.admin',
+  CLASS_VIEW_ANALYTICS: 'class.view_analytics',
+
+  // System Administration
+  SYSTEM_ADMIN: 'system.admin',
+  SYSTEM_VIEW_LOGS: 'system.view_logs'
+} as const;
+export type Permission = typeof Permission[keyof typeof Permission];
 
 export interface PermissionCheck {
   allowed: boolean;
@@ -114,24 +120,25 @@ export interface AuditLogEntry {
   userAgent?: string;
 }
 
-export enum AuditAction {
-  USER_CREATED = 'user.created',
-  USER_UPDATED = 'user.updated',
-  USER_DELETED = 'user.deleted',
-  ROLE_ASSIGNED = 'role.assigned',
-  ROLE_REVOKED = 'role.revoked',
-  PERMISSION_GRANTED = 'permission.granted',
-  PERMISSION_REVOKED = 'permission.revoked',
-  CLASS_CREATED = 'class.created',
-  CLASS_UPDATED = 'class.updated',
-  CLASS_DELETED = 'class.deleted',
-  QUIZ_CREATED = 'quiz.created',
-  QUIZ_MODIFIED = 'quiz.modified',
-  QUIZ_DELETED = 'quiz.deleted',
-  LOGIN_SUCCESS = 'login.success',
-  LOGIN_FAILED = 'login.failed',
-  LOGOUT = 'logout'
-}
+export const AuditAction = {
+  USER_CREATED: 'user.created',
+  USER_UPDATED: 'user.updated',
+  USER_DELETED: 'user.deleted',
+  ROLE_ASSIGNED: 'role.assigned',
+  ROLE_REVOKED: 'role.revoked',
+  PERMISSION_GRANTED: 'permission.granted',
+  PERMISSION_REVOKED: 'permission.revoked',
+  CLASS_CREATED: 'class.created',
+  CLASS_UPDATED: 'class.updated',
+  CLASS_DELETED: 'class.deleted',
+  QUIZ_CREATED: 'quiz.created',
+  QUIZ_MODIFIED: 'quiz.modified',
+  QUIZ_DELETED: 'quiz.deleted',
+  LOGIN_SUCCESS: 'login.success',
+  LOGIN_FAILED: 'login.failed',
+  LOGOUT: 'logout'
+} as const;
+export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
 
 // API response types
 export interface ApiResponse<T> {

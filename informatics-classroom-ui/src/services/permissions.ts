@@ -3,7 +3,6 @@ import type {
   Permission,
   PermissionCheck,
   RoleTemplate,
-  ClassPermission,
 } from '../types';
 
 export const permissionsService = {

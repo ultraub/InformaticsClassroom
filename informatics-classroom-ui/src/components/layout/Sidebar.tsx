@@ -10,6 +10,9 @@ import {
   KeyIcon,
   XMarkIcon,
   ChartBarIcon,
+  AcademicCapIcon,
+  BeakerIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,10 +36,10 @@ const navigation: NavItem[] = [
     requiredPermission: Permission.USER_VIEW,
   },
   {
-    name: 'Permissions',
-    href: '/permissions',
-    icon: ShieldCheckIcon,
-    requiredPermission: Permission.USER_MANAGE,
+    name: 'Class Management',
+    href: '/classes',
+    icon: AcademicCapIcon,
+    requiredRole: Role.INSTRUCTOR,
   },
   {
     name: 'Role Templates',
@@ -45,16 +48,32 @@ const navigation: NavItem[] = [
     requiredPermission: Permission.USER_MANAGE,
   },
   {
-    name: 'Quizzes',
-    href: '/quizzes',
-    icon: DocumentTextIcon,
-    requiredPermission: Permission.QUIZ_VIEW,
+    name: 'Token Generator',
+    href: '/tokens/generate',
+    icon: KeyIcon,
+    requiredRole: Role.INSTRUCTOR,
+  },
+  {
+    name: 'Assignment Analysis',
+    href: '/assignments/analyze',
+    icon: BeakerIcon,
+    requiredRole: Role.INSTRUCTOR,
+  },
+  {
+    name: 'Exercise Review',
+    href: '/exercises/review',
+    icon: BookOpenIcon,
   },
   {
     name: 'Assignments',
     href: '/assignments',
     icon: ClipboardDocumentListIcon,
-    requiredPermission: Permission.ASSIGNMENT_VIEW,
+    requiredPermission: Permission.QUIZ_VIEW,
+  },
+  {
+    name: 'Student Center',
+    href: '/student',
+    icon: AcademicCapIcon,
   },
   {
     name: 'Audit Logs',
@@ -64,14 +83,86 @@ const navigation: NavItem[] = [
   },
 ];
 
+// Role hierarchy with inheritance
+// Each role inherits permissions from roles listed in its array
+const ROLE_HIERARCHY: Record<string, string[]> = {
+  admin: ['instructor', 'ta', 'student'],
+  instructor: ['ta', 'student'],
+  ta: ['student'],
+  student: [],
+};
+
+// Permission mappings for roles
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  admin: ['*'], // Wildcard - all permissions
+  instructor: [
+    'quiz.view', 'quiz.create', 'quiz.modify', 'quiz.delete',
+    'assignment.view', 'assignment.create', 'assignment.grade',
+    'user.view', 'user.manage',
+    'student.view', 'student.manage'
+  ],
+  ta: ['quiz.view', 'assignment.view', 'assignment.grade', 'student.view'],
+  student: ['quiz.view', 'assignment.view', 'own_data.view'],
+};
+
 function hasAccess(
   user: any,
   requiredRole?: Role,
   requiredPermission?: Permission
 ): boolean {
   if (!user) return false;
-  if (requiredRole && !user.roles.includes(requiredRole)) return false;
-  // TODO: Implement proper permission checking with backend
+
+  // Admin role inherits all permissions and roles
+  const userRoles = user.roles || [];
+  if (userRoles.includes(Role.ADMIN) || userRoles.includes('admin')) return true;
+
+  // If checking for a specific role, check inheritance
+  if (requiredRole) {
+    // Check if user has the required role directly
+    if (userRoles.includes(requiredRole)) return true;
+
+    // Check if user has a role that inherits the required role
+    for (const userRole of userRoles) {
+      const inheritedRoles = ROLE_HIERARCHY[userRole] || [];
+      if (inheritedRoles.includes(requiredRole)) return true;
+    }
+
+    // Check class-specific roles if user has classRoles
+    if (user.classRoles && typeof user.classRoles === 'object') {
+      for (const classRole of Object.values(user.classRoles)) {
+        if (classRole === requiredRole) return true;
+        const inheritedRoles: string[] = ROLE_HIERARCHY[classRole as string] || [];
+        if (inheritedRoles.includes(requiredRole)) return true;
+      }
+    }
+
+    return false;
+  }
+
+  // If checking for a specific permission
+  if (requiredPermission) {
+    // Check if any user role grants this permission
+    for (const userRole of userRoles) {
+      const rolePerms = ROLE_PERMISSIONS[userRole] || [];
+      if (rolePerms.includes('*') || rolePerms.includes(requiredPermission)) {
+        return true;
+      }
+    }
+
+    // Check class-specific roles for permissions
+    if (user.classRoles && typeof user.classRoles === 'object') {
+      for (const classRole of Object.values(user.classRoles)) {
+        const rolePerms = ROLE_PERMISSIONS[classRole as string] || [];
+        if (rolePerms.includes('*') || rolePerms.includes(requiredPermission)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // If no specific role/permission required, user just needs to be authenticated
   return true;
 }
 
