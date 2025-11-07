@@ -69,14 +69,24 @@ def get_quiz_by_id(quiz_id):
 def get_user_answers_for_quiz(class_val, module_val, team):
     db = get_database_adapter()
     # Use query_raw for complex queries with ORDER BY
+    # Note: PostgreSQL stores data in JSONB, so we extract fields using ->> operator
+    # Use course/module fields instead of PartitionKey for database-agnostic compatibility
     query = """
-        SELECT question, answer, correct FROM answer
-        WHERE partition_key = $1 AND team = $2 AND datetime IS NOT NULL
-        ORDER BY datetime DESC
+        SELECT
+            data->>'question' as question,
+            data->>'answer' as answer,
+            (data->>'correct')::integer as correct
+        FROM answer
+        WHERE data->>'course' = $1
+          AND data->>'module' = $2
+          AND data->>'team' = $3
+          AND data->>'datetime' IS NOT NULL
+        ORDER BY data->>'datetime' DESC
     """
     parameters = [
-        {"name": "$1", "value": f"{class_val}_{module_val}"},
-        {"name": "$2", "value": team}
+        {"name": "$1", "value": class_val},
+        {"name": "$2", "value": str(module_val)},
+        {"name": "$3", "value": team}
     ]
     answers = db.query_raw('answer', query, parameters)
     return answers
